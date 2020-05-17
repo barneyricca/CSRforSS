@@ -1,0 +1,291 @@
+---
+title: "Chapter 3"
+author: "BPR"
+date: "6/3/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+{         # Put the cursor on this line, and run it; because
+          #  of the curly braces, all the code within
+          #  the braces will be run.
+  c("data.table",   # fread() for FAST and flexible data input
+    "dplyr",        # Data wrangling
+    "dtplyr",       # For faster data wrangling with tidyverse structure
+    "here",         # To assist with folder structure
+    "MASS",         # For fitting distributions
+    "poweRlaw") ->  # To fit power law data; MASS::fitdistr() can't
+  package_names
+
+  for (package_name in package_names) {
+    if (!is.element(package_name, installed.packages()[, 1])) {
+      install.packages(package_name, repos = "http://lib.stat.cmu.edu/R/CRAN")
+    }
+    library(package_name,
+            character.only = TRUE,
+            quietly = TRUE,
+            verbose = FALSE
+    )
+  }
+  rm(list = c("package_names", "package_name"))
+}
+
+# Reprodcibility
+set_here()      # This helps with folder structure when shifting computers
+
+# Usually, seeds for random number generation would be set here. They are, for
+#  pedagogical reasons, set with each snippet of code.
+
+# Stuff I prefer
+options(show.signif.stars = FALSE) # Do not show significance stars! Showing
+                                   #  significance stars encourages the
+                                   #  conflation of significant and effect
+                                   #  size.
+options(digits = 5)                # Round to 5 digits
+```
+
+
+
+
+```{r F3.x}
+# Simulate the Lorenz system
+
+sim.cont(syst = lorenz.syst,
+         start.time = 0,
+         end.time = 8000,
+         dt = 0.05,
+         start.x=c(5,5,5),
+         parms=c(10, 28, -8/3),
+         obs.fun = function(x) list(x)) -> lorenz_ts
+
+# Convert from lorenz_ts list to 3 time series. There are
+#  other ways to do this, but this works
+unlist(lorenz_ts) -> temp_ts    # Change from list to named vector
+unname(temp_ts[which(names(temp_ts) == "1")]) -> x_ts
+unname(temp_ts[which(names(temp_ts) == "2")]) -> y_ts
+unname(temp_ts[which(names(temp_ts) == "3")]) -> z_ts
+
+# library(plot3D)
+50 -> n
+lines3D(x_ts[1:n], y_ts[1:n], z_ts[1:n])
+
+# Figure 3.1
+plot(z_ts,
+     type = 'l',
+     main = "z-component of Lorenz map",
+     xlab = "time index",
+     ylab = "z")
+
+```
+
+
+
+
+```{r F3.y}
+data.frame("Time" = 1:(length(z_ts)),
+           "Z" = z_ts) -> lorenz_z
+lm(Z ~ Time, data = lorenz_z) -> z_lm
+{
+  plot(z_ts,
+       type = 'l',
+       main = "z-component of Lorenz map",
+       xlab = "time index",
+       ylab = "z")
+  abline(a = z_lm$coef[1],
+         b = z_lm$coef[2],
+         col = "green")
+}
+
+
+```
+
+
+
+```{r F3.z}
+hist(z_lm$residuals,
+     breaks = 50,
+     main = "Histogram of residuals",
+     xlab = "Residual")
+
+
+```
+
+
+```{r F3.1}
+c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
+  10, 10, 10, 11, 11, 12) -> dice_rolls
+hist(dice_rolls,
+     main = "Frequency of Results from Two Dice",
+     xlab = "Roll total",
+     ylab = "frequency",
+     xlim = c(1.5, 12.5),
+     breaks = seq(from = 1.5,
+                  to = 12.5,
+                  by = 1))
+
+```
+
+
+
+
+```{r F3.2}
+set.seed(31)      # This is important! See Appendix B
+
+# Put all the totals from Table 3.1 into 
+c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
+  10, 10, 10, 11, 11, 12) -> dice_rolls
+
+1e6 -> R          # 1e6 is 1 followed by 6 zeroes, or 1,000,000 (one million)
+replicate(R,      # replicate(R,...) means to do something R times
+          # sample() the numbers 1, 2, ...6 two times, allowing the same number
+          #  to appear more than once. This is a roll of 2 digital dice
+          # sum() means to add up what appears; in this case, it is the results
+          #  of the two dice roll
+          # -> puts the 1 million results into the variable, "two_dice_results"
+          sum(sample(1:6, 2, replace = TRUE))) -> two_dice_results
+
+hist(two_dice_results,
+     # main is the title for the graph
+     main = "Frequency of Results from One Million Simulations of Two Dice",
+     xlab = "Roll total",      # Label for the x-axis
+     ylab = "frequency",       # Label for the y-axis
+     xlim = c(1.5, 12.5),      # Set the limits for the x-axis
+     breaks = seq(from = 1.5,  # This will make bins around 2, 3, 4,..., 12
+                  to = 12.5,
+                  by = 1))
+
+ks.test(two_dice_results,  # Perform a Komogorov-Smirnov test,
+        dice_rolls)        #  comparing the simulated results to Table 3.1
+```
+
+```{r T3.2}
+set.seed(31)      # This is important! See Appendix B
+
+# Put all the totals from Table 3.1 into 
+c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
+  10, 10, 10, 11, 11, 12) -> dice_rolls
+
+#1e6 -> R          # 1e6 is 1 followed by 6 zeroes, or 1,000,000 (one million)
+1e8 -> R   # About 8000 seconds; 1e6 took about 8 seconds.
+Sys.time()
+replicate(R,      # replicate(R,...) means to do something R times
+          # sample() the numbers 1, 2, ...6 two times, allowing the same number
+          #  to appear more than once. This is a roll of 2 digital dice
+          # sum() means to add up what appears; in this case, it is the results
+          #  of the two dice roll
+          # -> puts the 1 million results into the variable, "two_dice_results"
+          sum(sample(1:6, 2, replace = TRUE))) -> two_dice_results
+Sys.time()
+
+as.vector(unname(table(dice_rolls))) / 36 -> dice_probs
+as.vector(unname(table(two_dice_results))) / R -> sim_dice_probs
+data.frame("Dice Total" = 2:12,
+           "Probability" = dice_probs,
+           "Simulation Probability" = sim_dice_probs) -> 
+  dice_prob_df
+dice_prob_df
+
+# NEed to do something with kable() or some other package - gridExtra or lemon_print
+```
+
+
+
+```{r F3.3}
+c(27, 19, 20, 20, 23, 17, 21, 24, 31, 26, 28, 20, 27, 19, 25, 31, 24, 28, 24,
+  29, 21, 21, 18, 27, 20) -> beer
+c(21, 19, 13, 22, 15, 22, 15, 22, 20, 12, 24, 24, 21, 19, 18, 16, 23, 20) -> 
+  water
+```
+
+
+```{r F3.5}
+# First, randomly set up the cups, "M" for milk-first, "T" for
+#  tea-first.
+sample(rep(c("M","T"), each = 4), 8, replace = FALSE) -> treatment
+
+# Determine how many times to try guessing
+1e6 -> N
+
+# The guessing function. Taken with the replicate() command below,
+#  this will be part one of the process. (See the text.)
+guess1 <- function(treat) {          # Define a function.
+  # The function "guess1" takes the arrangement of cups
+  # and returns whether or not the guess was right or wrong.
+  
+  # Make the guess:
+  sample(rep(c("M","T"), each = 4),  # 8 guesses; four of each
+         8,                          
+         replace = FALSE) -> attempt
+  
+  # Compare to the treatment
+  return(length(which(treat == attempt)))
+  
+#  if(all(attempt == treat)) {  # Compare the guesses to the treatments
+#    return(TRUE)               # The guesses were all correct!
+#  } else {
+#    return(FALSE)              # At least one guess was wrong
+#  }
+}
+
+set.seed(35)
+
+# The next is part 1, the large number of guesses. (See the text.)
+replicate(N, guess1(treatment)) -> results
+
+# The next is part 2; aggregation of the results.
+# The table() command creates a table with the number of times each
+#  result appears in the argument. By default, the table will be
+#  sorted in ascending order.
+table(results) -> results_tab
+
+# Finally, part 3 (see the text): What fraction of the results meet
+#  the criteria? This will be the probability of success. In the next
+#  command, length(results_tab) returns how many items are in the
+#  table. Because the last item is the one we want (all 8 correctly
+#  identified), this is an easy way to get that.
+results_tab[length(results_tab)] / N
+
+```
+
+
+
+
+```{r F3.28}
+# Spam data (Poisson)
+# From my SJFC spam filter: Number of spam messages caught daily, from 1/23/20
+#  through about the next month
+c(4, 3, 2, 1, 3, 1, 3, 2, 2, 0, 0, 0, 1, 1, 6, 5, 1, 2, 1, 2, 3, 1, 2,
+  3, 1, 0, 1, 2, 1, 3, 3, 2, 2) -> spam
+ks.test(spam,         # data to test
+        ppois,        # hypothesized distribution
+        mean(spam))   # parameter for ppois
+
+library(MASS)
+fitdistr(spam, "Poisson")  -> pois_est
+
+pois_est$estimate
+pois_est$sd
+
+{
+  hist(spam,
+       main = "Daily spam probabilities",
+       xlab = "Number of spam messages caught",
+       ylab = "Probability",
+       breaks = seq(       # "breaks =" makes a better looking graph
+         from = -0.5,
+         to = max(spam) + 0.5,
+         by = 1),
+       prob = TRUE)
+  lines(0:max(spam),
+        dpois((0:max(spam)),
+              lambda = pois_est$estimate),
+        lwd = 2,
+        col = "mediumblue")
+}
+```
+
+

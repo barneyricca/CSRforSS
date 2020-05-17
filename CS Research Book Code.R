@@ -1,5 +1,5 @@
 # ***************************************************************
-# This file contains all of the R code for the examples and figures 
+# This file contains all of the R code for the examples and figures
 #  in the book.
 #
 # ABM models are found elsewhere.
@@ -25,7 +25,7 @@
 #   Fitting distributions
 #   ks.test() and the like
 # Chapter 4:
-#   inference via resampling 
+#   inference via resampling
 # Chapter 5:
 #   ARIMA models
 #   windowed entropy approaches
@@ -45,7 +45,7 @@
 
 # ***************************************************************
 ## Setup for all code ####
-# 
+#
 # Run the next set of commands before doing anything else. This set up must be
 #  repeated each time you re-open this file.
 #
@@ -89,7 +89,7 @@
     )
   }
   rm(list = c("package_names", "package_name"))
-  
+
   conflict_prefer("decompose", "stats")
 }
 
@@ -141,7 +141,7 @@ OD <- function(data_seq) {
   #  - phi-square (phi-sq = chi-sq/N*)
   # This all follows Guastello, Chapter 21, in Guastello & Gregson, 2011, _Nonlinear
   #   Dynamical Systems Analysis for the Behavioral Sciences Using Real Data_.
-  
+
   # First, recast everything into single character codes:
   unique(data_seq) -> uni_seq
   length(uni_seq) -> n_codes
@@ -152,28 +152,28 @@ OD <- function(data_seq) {
   LETTERS[1:n_codes] -> uni_rep
   uni_seq -> names(uni_rep)
   uni_rep[data_seq] -> data_seq
-  
+
   # Begin processing data
   length(data_seq) -> seq_len
   1 -> C
   length(data_seq) -> N_star
-  
+
   TRUE -> continue
   0 -> recurs
   data_seq -> keep1
   data_seq -> seq1
-  
+
   shift(seq1, 1) -> seq2
   length(which(seq1 == seq2)) -> recurs
-  
+
   unique(seq1[which(seq1==seq2)]) -> repeats
   length(repeats) -> trMC
   log2(trMC)/C -> H_T
   exp(H_T) -> D_L
-  length(unique(data_seq)) - 1 -> dof # For the singlets, this is true; 
+  length(unique(data_seq)) - 1 -> dof # For the singlets, this is true;
                                       #  after this, it is the number of unique
                                       #  repeated codes
-  
+
   table(seq1) -> F_obs_tab
   F_obs_tab / seq_len -> p_obs_keep   # This gets used for calculations later
   rep(seq_len / length(unique(data_seq)),
@@ -182,8 +182,8 @@ OD <- function(data_seq) {
   -1 * sum(p_obs_tab * log(p_obs_tab)) -> H_S
   sum(F_obs_tab * log(F_obs_tab / F_exp)) * 2 -> chi_sq
   dchisq(chi_sq, dof) -> p
-  chi_sq / N_star[C] -> phi_sq 
-  
+  chi_sq / N_star[C] -> phi_sq
+
   while(continue) {
     # Identify all recurrences of length C
     N_star[C] - 1 -> N_star[C + 1]
@@ -193,32 +193,32 @@ OD <- function(data_seq) {
     seq1[-N_star[C]] -> seq1
     shift(seq1, (C+1)) -> seq2
     length(which(seq1 == seq2)) -> recurs[C + 1]
-    
+
     C + 1 -> C
     unique(seq1[which(seq1==seq2)]) -> repeats   # Which codes are repeated?
     length(repeats) -> trMC[C]                   # How many repeated codes are there?
     log2(trMC[C])/C -> H_T[C]                    # Topological entropy
     exp(H_T[C]) -> D_L[C]                        # Lyapunov dimension
-    
+
     # The number of unique repeated codes:
     table(seq1) -> repeated_codes -> F_obs_tab
     length(repeated_codes[which(repeated_codes > 1)]) -> dof[C]
-    
+
     F_obs_tab[which(F_obs_tab > 1)] -> F_rep_obs_tab  # Repeated codes
-    
+
     # Calculate H_S:
-    length(F_obs_tab) - 
+    length(F_obs_tab) -
       length(F_rep_obs_tab) -> singlets               # Number of singlets; for H_S
     F_rep_obs_tab / N_star[C] -> p_obs_tab            # For H_S
     -1 * sum(p_obs_tab * log(p_obs_tab)) -> H_S[C]    # Multiple repeats
-    H_S[C] + singlets * 
+    H_S[C] + singlets *
       (log(N_star[C]) / N_star[C]) -> H_S[C]          # Singlets
-    
-    # Frequency expected    
+
+    # Frequency expected
     length(F_rep_obs_tab) -> n_rep
     rep(1, n_rep + 1) -> F_exp                        # For all the repeats and a
     0 -> F_exp[n_rep+1]                               #  slot for the singlets
-    
+
     for(i in 1:n_rep) {
       for(j in 1:C) {
         substr(names(F_rep_obs_tab)[i], j, j) -> fn
@@ -227,19 +227,19 @@ OD <- function(data_seq) {
       F_exp[i] * N_star[C] -> F_exp[i]
     }
     N_star[C] - sum(F_exp) -> F_exp[n_rep+1]
-    
+
     #    F_reps_obs_tab / N_star[C] -> F_obs
     N_star[C] - sum(F_rep_obs_tab) -> F_rep_obs_tab[length(F_rep_obs_tab) + 1]
-    
+
     sum(F_rep_obs_tab * log(F_rep_obs_tab / F_exp)) * 2 -> chi_sq[C]
     dchisq(chi_sq[C], dof[C]) -> p[C]
     chi_sq[C] / N_star[C] -> phi_sq[C]
-    
+
     if(recurs[C] == 0) {   # Keep going or not?
       FALSE -> continue
     }
   }
-  
+
   data.table("C" = 1:C,
              "trMC" = trMC,
              "H_T" = H_T,
@@ -258,7 +258,7 @@ OD <- function(data_seq) {
 census <- function(data_vec, codes) {
   rep(0, length(codes)) -> census_vec
   codes -> names(census_vec)
-  
+
   for(i in seq_along(data_vec)) {
     census_vec[data_vec[i]] + 1 -> census_vec[data_vec[i]]
   }
@@ -270,69 +270,69 @@ win_ent <- function(data_seq, parts = 16, lag_max = 50) {
   # Returns a data frame (or NULL, if failed) of two time series:
   #  1. A (numeric) windowed entropy
   #  2. A marker of maxima (TRUE for a maxima, FALSE for not)
-  # 
+  #
   if(mode(data_seq) == "integer") {
     as.character(data_seq) -> data_seq
   }
-  
+
   if(mode(data_seq) == "numeric") {
     max(data_seq) -> max_data
     min(data_seq) -> min_data
     as.character(1:parts) -> codes
-    ceiling( parts * 
+    ceiling( parts *
                (data_seq - min_data) /
                (max_data - min_data)) -> partition
     1 -> partition[which(partition == 0)]  # partition goes 0:parts, not 1:parts
     codes[partition] -> data_seq
   }
-  
+
   if(mode(data_seq) != "character") {
     return(NULL)
   }
-  
+
   require(data.table)
   unique(data_seq) -> codes
   length(codes) -> n_codes
   table(data_seq) -> code_counts
   1:n_codes -> nums
   codes -> names(nums)
-  
+
   code_counts / sum(code_counts) -> code_probs
-  
+
   # The appropriate lag, according to Fraser & Swinney, 1986, is at
   #  the first minimum of mutual information.
-  which.min(mutual(unname(nums[data_seq]), 
+  which.min(mutual(unname(nums[data_seq]),
                    partitions = n_codes,       # Arbitrary partitions needed                                                          #  for continuous data; any
                    #  partition >= n_codes works
                    #  for categorical data.
                    lag.max = lag_max,
                    plot = FALSE)) -> wind_sz
-  
+
   # Calculate the windowed entropy, ent[]:
   # This is different than what Wiltshire, Fiore, & Butner (2017) do. However,
   #  I think that they overestimate the issue (and they probably would think
   #  that I underestimate the issue.) They use the natural log, and only use
-  #  the probabilities within the window. 
+  #  the probabilities within the window.
   length(data_seq) -> seq_len
   rep(0.0, length = (seq_len - wind_sz + 1)) -> ent
-  
+
   for(i in 1:(length(ent))) {
     for(j in 0:(wind_sz-1)) {
-      ent[i] - (code_probs[data_seq[i+j]] * 
+      ent[i] - (code_probs[data_seq[i+j]] *
                   log2(code_probs[data_seq[i+j]])) -> ent[i]
     }
   }
-  
+
   # Find the appropriate maxima:
   # Pass 1 - find all maxima:
   vector("logical", length(ent)) -> maxes  # All entries are FALSE by default
   for (i in 2:(length(ent)-1)) {
-    if(ent[i] >= ent[i-1] && 
+    if(ent[i] >= ent[i-1] &&
        ent[i] >= ent[i+1]) {
       TRUE -> maxes[i]
     }
   }
-  
+
   # Pass 2 - which maxima indicate code probability changes from before to after a
   #  maximum located in Pass 1
   1 -> i_old
@@ -344,7 +344,7 @@ win_ent <- function(data_seq, parts = 16, lag_max = 50) {
         census(data_seq[i_old:i], codes) -> before
         census(data_seq[(i+1):n_max], codes) -> after
         rbind(before,after) -> cont_tab
-        
+
         # I prefer the fisher.test() for the next one, but it sometimes
         #  runs out of memory. The chi-squared sometimes fails for really
         #  small cell values (and zeroes); hence the is.na().
@@ -367,9 +367,9 @@ win_ent <- function(data_seq, parts = 16, lag_max = 50) {
     }
   }
   # In principle, this refinement should be iterated until it converges. However,
-  #  as we know this approach is biased, we won't try to refine something that 
+  #  as we know this approach is biased, we won't try to refine something that
   #  will still be a bit biased.
-  
+
   data.frame("Windowed_Entropy" = ent,    # Entropy
              "Maxima" = maxes) -> ent_df  # True if a local maximum of entropy
   return(ent_df)
@@ -444,15 +444,15 @@ plot(gap, accel,          # Plot with gap on horizontal & accel on vertical
 
 # ***************************************************************
 # Figure 3.1
-# 
+#
 
 # Simulate the Lorenz system
-sim.cont(syst = lorenz.syst, 
-         start.time = 0, 
-         end.time = 8000, 
-         dt = 0.05, 
-         start.x=c(5,5,5), 
-         parms=c(10, 28, -8/3), 
+sim.cont(syst = lorenz.syst,
+         start.time = 0,
+         end.time = 8000,
+         dt = 0.05,
+         start.x=c(5,5,5),
+         parms=c(10, 28, -8/3),
          obs.fun = function(x) list(x)) -> lorenz_ts
 
 # Convert from lorenz_ts list to 3 time series. There are
@@ -489,7 +489,7 @@ lm(Z ~ Time, data = lorenz_z) -> z_lm
 }
 
 # Figure 3.3
-hist(z_lm$residuals, 
+hist(z_lm$residuals,
      breaks = 50,
      main = "Histogram of residuals",
      xlab = "Residual")
@@ -497,24 +497,24 @@ hist(z_lm$residuals,
 
 # ***************************************************************
 # Figure 3.2
-# 
+#
 
 
 # ***************************************************************
 # Figure 3.3
-# 
+#
 
 
 
 # ***************************************************************
 # Figure 3.4
-# 
+#
 c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
   7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
   10, 10, 10, 11, 11, 12) -> dice_rolls
 hist(dice_rolls,
      main = "Frequency of Results from Two Dice",
-     xlab = "total", 
+     xlab = "total",
      ylab = "frequency",
      xlim = c(1.5, 12.5),
      breaks = seq(from = 1.5,
@@ -530,7 +530,7 @@ hist(dice_rolls,
 #
 R = 1e6
 replicate(R,
-          sum(sample(1:6, 2, replace = TRUE))) -> 
+          sum(sample(1:6, 2, replace = TRUE))) ->
   two_dice_results
 ks.test(results,
         "pnorm")
@@ -604,31 +604,31 @@ pois_est$sd
 
 # ***************************************************************
 # Figure 3.8
-# 
+#
 
 # ***************************************************************
 # Figure 3.9
-# 
+#
 
 # ***************************************************************
 # Figure 3.10
-# 
+#
 
 # ***************************************************************
 # Figure 3.11
-# 
+#
 
 # ***************************************************************
 # Figure 3.12
-# 
+#
 
 # ***************************************************************
 # Figure 3.13
-# 
+#
 
 # ***************************************************************
 # Figure 3.14
-# 
+#
 
 
 
@@ -660,12 +660,12 @@ generate_scores <- function(x, y) {
   2.5 -> mu_int_old
   0.1 -> mu_slope
   0 -> mu_error
-  
+
   0.1 -> sd_int_young
   0.1 -> sd_int_old
   0.02 -> sd_slope
   0.2 -> sd_error
-  
+
   ifelse(y < x,
          rnorm(1, mu_int_young, sd_int_young) + rnorm(1, mu_slope, sd_slope) * y,
          rnorm(1, mu_int_old, sd_int_old) + rnorm(1, mu_slope, sd_slope) * y) -> scores
@@ -725,12 +725,12 @@ generate_scores <- function(x, y) {
   2.5 -> mu_int_old
   0.1 -> mu_slope
   0 -> mu_error
-  
+
   0.1 -> sd_int_young
   0.1 -> sd_int_old
   0.02 -> sd_slope
   0.2 -> sd_error
-  
+
   ifelse(y < x,
          rnorm(1, mu_int_young, sd_int_young) + rnorm(1, mu_slope, sd_slope) * y,
          rnorm(1, mu_int_old, sd_int_old) + rnorm(1, mu_slope, sd_slope) * y) -> scores
@@ -794,6 +794,7 @@ apply(score, 1, median) -> median_score
 
 # Residual analysis and Figures 5.1-5.4
 
+
 1:15 -> x
 3*x + 4 -> y
 set.seed(42)
@@ -808,6 +809,48 @@ hist(yunif.lm$residuals,
      main = "Histogram of residuals",
      xlab = "residual")
 
+summary(yunif.lm)
+
+{
+  plot(x, yunif,              # Plot the data
+       main = "Dummy Data",   # Title above the plot
+       xlab = "X",            # x-axis label
+       ylab = "Y",            # y-axis label
+       xlim = c(0,16),        # x-axis range
+       ylim = c(0,50),        # y-axis range
+       pch = 16,              # Use a solid dot
+       cex = 0.8)             # make the dots a little smaller
+  abline(a = yunif.lm$coef[1],    # Add a line, with intercept a
+         b = yunif.lm$coef[2],    #  and slope b
+         col = "darkgreen")   #  in a nice dark green color
+  text(1, 40,                 # Put some text info on the plot
+       labels = paste0("slope = ",
+                       round(yunif.lm$coefficients[2], digits = 2)),
+       adj = c(0,0))          # Position the lower left at (1,40)
+  text(1, 35,                 # Put some more text on the plot
+       labels = paste0("intercept = ",
+                       round(yunif.lm$coefficients[1], digits = 2)),
+       adj = c(0,0))
+}
+
+
+
+# Figure 5.2
+{
+  plot(x, yunif.lm$residuals,              # Plot the data
+       main = "Residuals",   # Title above the plot
+       xlab = "X",            # x-axis label
+       ylab = "Residuals",            # y-axis label
+       xlim = c(0,16),        # x-axis range
+       ylim = c(-5,5),        # y-axis range
+       pch = 16,              # Use a solid dot
+       cex = 0.8)             # make the dots a little smaller
+
+}
+
+library(lmPerm)
+lmp(yunif ~ x, center = FALSE) -> y_perm.lm
+summary(y_perm.lm)
 
 # Figure 5.6
 1:10 -> x
@@ -961,7 +1004,7 @@ polyfit(xn, xnp1, 2) -> logistic_poly   # Fit a 2nd order polynomial
        col = "green",
        xlab = expression('x'[n]),   # [] puts in a subscript
        ylab = expression('x'[n+1]))
-  points(xn, 
+  points(xn,
          logistic_poly[1]*xn*xn + logistic_poly[2]*xn + logistic_poly[3],
          pch = 21,
          cex = 0.4,
@@ -987,26 +1030,26 @@ library(workloopR)
 #  https://ropensci.org/technotes/2019/11/14/workloopr-release/
 
 ## import the workloop.ddf file included within workloopR
-wl_dat <-read_ddf(system.file("extdata", "workloop.ddf", 
+wl_dat <-read_ddf(system.file("extdata", "workloop.ddf",
                               package = 'workloopR'),
                   phase_from_peak = TRUE)
 
   names(attributes(wl_dat))
-  
+
   attr(wl_dat,"stim_table")
   attr(wl_dat,"total_cycles")
-  
-  
+
+
   library(ggplot2)
-  
+
   ## select cycles 3 through 5 using a l0-to-l0 definition
   # There are 6 cycles
   wl_selected <- select_cycles(wl_dat, cycle_def = "lo", keep_cycles = 1:6)
-  
+
   ## apply a gear ratio correction, run the analysis function,
   ## and then get the full object
   wl_analyzed <- analyze_workloop(wl_selected, GR = 2)
-  
+
   ## base R work loop plot for the second retained cycle (cycle "b")
   plot(wl_analyzed$cycle_b$Position,
        wl_analyzed$cycle_b$Force,
@@ -1015,14 +1058,14 @@ wl_dat <-read_ddf(system.file("extdata", "workloop.ddf",
        main = "Work loop plot via base R",
        bty = "n",
        tck = 0.02)
-  
+
   ## now via ggplot
   ggplot(wl_analyzed$cycle_b, aes(x = Position, y = Force)) +
     geom_path(lwd = 2) +
     labs(y = "Force (mN)", x = "Position (mm)") +
     ggtitle("Work loop plot via ggplot2") +
     theme_minimal()
-  
+
 # ****************************
 # End of Figure 6.x
 # ***************************************************************
@@ -1058,7 +1101,7 @@ wl_dat <-read_ddf(system.file("extdata", "workloop.ddf",
 # Figure 8.7
 # ****************************
 
-graph_from_adjacency_matrix(adj_mat, 
+graph_from_adjacency_matrix(adj_mat,
                             weighted = TRUE) -> g
 
 
