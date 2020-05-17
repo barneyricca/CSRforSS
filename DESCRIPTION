@@ -1,0 +1,15 @@
+Package: CSRforSS
+Title: Complex Systems Research for Social Science
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Bernard",
+           family = "Ricca",
+           role = c("aut", "cre"),
+           email = "barneyricca@gmail.com",
+           comment = c(ORCID = "0000-0001-6318-1222"))
+Description: This packages contains the various R scripts, data, and other files associated with the textbook "Complex Systems Research for Social Science."
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.0
