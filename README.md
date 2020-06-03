@@ -8,11 +8,12 @@ The goal of CSRforSS is to ...
 
 ## Installation
 
-You can install the released version of CSRforSS from [CRAN](https://CRAN.R-project.org) with:
+You can install the released version of CSRforSS from [CRAN](https://CRAN.R-project.org) (assuming it ever gets there) with:
 
 ``` r
 install.packages("CSRforSS")
 ```
+In the meantime, just download from here and open the appropriate R scripts.
 
 ## Example
 
