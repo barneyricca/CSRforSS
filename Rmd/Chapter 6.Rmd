@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
   c("data.table",   # fread() for FAST and flexible data input
     "dplyr",        # Data wrangling
     "dtplyr",       # For faster data wrangling with tidyverse structure
+    "gridExtra",    # For better table printing
     "here",         # To assist with folder structure
     "MASS",         # For fitting distributions
     "poweRlaw") ->  # To fit power law data; MASS::fitdistr() can't
@@ -112,7 +113,8 @@ hist(z_lm$residuals,
 ```
 
 
-```{r F3.1}
+```{r F6.1}
+# Put all the outcomes from Table 6.1 into a variable
 c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
   7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
   10, 10, 10, 11, 11, 12) -> dice_rolls
@@ -127,67 +129,61 @@ hist(dice_rolls,
 
 ```
 
-
-
-
-```{r F3.2}
-set.seed(31)      # This is important! See Appendix B
-
-# Put all the totals from Table 3.1 into 
-c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
-  7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
-  10, 10, 10, 11, 11, 12) -> dice_rolls
-
-1e6 -> R          # 1e6 is 1 followed by 6 zeroes, or 1,000,000 (one million)
-replicate(R,      # replicate(R,...) means to do something R times
-          # sample() the numbers 1, 2, ...6 two times, allowing the same number
-          #  to appear more than once. This is a roll of 2 digital dice
-          # sum() means to add up what appears; in this case, it is the results
-          #  of the two dice roll
-          # -> puts the 1 million results into the variable, "two_dice_results"
+The following process for simulating data is presented in Chapter 4. Be sure that you have thoroughly covered the appropriate section there!
+```{r F6.2}
+# Refer to Chapter 4 for an explanation
+set.seed(62)
+1e6 -> R
+replicate(R,
           sum(sample(1:6, 2, replace = TRUE))) -> two_dice_results
 
+
 hist(two_dice_results,
-     # main is the title for the graph
      main = "Frequency of Results from One Million Simulations of Two Dice",
      xlab = "Roll total",      # Label for the x-axis
      ylab = "frequency",       # Label for the y-axis
      xlim = c(1.5, 12.5),      # Set the limits for the x-axis
-     breaks = seq(from = 1.5,  # This will make bins around 2, 3, 4,..., 12
+     breaks = seq(from = 1.5,  # This will make bins for 2, 3, 4,...12
                   to = 12.5,
                   by = 1))
 
+
+# Put all the outcomes from Table 6.1 into a variable
+c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
+  10, 10, 10, 11, 11, 12) -> dice_rolls
 ks.test(two_dice_results,  # Perform a Komogorov-Smirnov test,
-        dice_rolls)        #  comparing the simulated results to Table 3.1
+        dice_rolls)        #  comparing the simulated results 
+                           #  to the frequencies in Table 6.1
 ```
 
-```{r T3.2}
-set.seed(31)      # This is important! See Appendix B
+```{r T6.2}
+set.seed(62)
+1e8 -> R   # Takes about 8000 seconds on my computer.
+           # 1e6 replications takes about 8 seconds.
+replicate(R,
+          sum(sample(1:6, 2, replace = TRUE))) -> two_dice_results
 
-# Put all the totals from Table 3.1 into 
+# Put all the totals from Table 6.1 into 
 c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
   7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
   10, 10, 10, 11, 11, 12) -> dice_rolls
 
-#1e6 -> R          # 1e6 is 1 followed by 6 zeroes, or 1,000,000 (one million)
-1e8 -> R   # About 8000 seconds; 1e6 took about 8 seconds.
-Sys.time()
-replicate(R,      # replicate(R,...) means to do something R times
-          # sample() the numbers 1, 2, ...6 two times, allowing the same number
-          #  to appear more than once. This is a roll of 2 digital dice
-          # sum() means to add up what appears; in this case, it is the results
-          #  of the two dice roll
-          # -> puts the 1 million results into the variable, "two_dice_results"
-          sum(sample(1:6, 2, replace = TRUE))) -> two_dice_results
-Sys.time()
-
 as.vector(unname(table(dice_rolls))) / 36 -> dice_probs
 as.vector(unname(table(two_dice_results))) / R -> sim_dice_probs
+
 data.frame("Dice Total" = 2:12,
-           "Probability" = dice_probs,
-           "Simulation Probability" = sim_dice_probs) -> 
+           "Probability" = round(dice_probs, digits = 4),
+           "Simulated Probability" = round(sim_dice_probs, 
+                                           digits = 4)) -> 
   dice_prob_df
-dice_prob_df
+
+grid.arrange(
+  tableGrob(dice_prob_df, 
+            theme = ttheme_default(),
+            cols = c("2 Dice Total",
+                     "Probability",
+                     "Simulated Probability")))
 
 # NEed to do something with kable() or some other package - gridExtra or lemon_print
 ```

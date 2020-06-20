@@ -1,4 +1,4 @@
- ---
+---
 title: "Chapter 4"
 author: "BPR"
 date: "6/16/2020"
@@ -7,11 +7,122 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
 ```
 
-```{r 4.1}
+```{r}
 c(1, 2, 3, 4, 5) -> integers
 integers
 mean(integers)
+```
+
+
+```{r 4.1}
+read.csv("https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/sample.csv",
+         header = TRUE) -> sample_data
+sample_data
+lm(y~x, data = sample_data)
+```
+
+```{r 4.2, fig.width=6.5}
+1:10 -> x
+x^2 -> y
+plot(x,y)
+```
+
+```{r 4.3, fig.width=6.5}
+plot(x, y,
+     main = "Dummy Data",        # Change the title above the plot
+     sub = "More advanced plot", # Subtitle
+     xlab = "X",                 # set the x-axis label
+     ylab = "Y",                 # set the y-axis label
+     xlim = c(0,16),             # set the x-axis range 
+     ylim = c(0,50),             # set the y-axis range
+     pch = 16,                   # Use a solid dot, not an open
+                                 #  circle
+     cex = 0.8)                  # make the dots a little smaller;
+                                 #  cex = 1 is the default size
+```
+
+```{r 4.4, fig.width=6.5}
+rnorm(n = 1000,
+      mean = 0,
+      sd = 1) -> dummy_data
+hist(dummy_data,
+     breaks = 50,
+     main = "Normal distribution histogram")
+```
+
+```{r 4.5}
+2 + 3
+8 - 5
+8 * 7
+16 / 2
+sqrt(81)
+2 ^ 5
+exp(3)
+log(8, 2)
+log(1000, 3)
+mean(1:10)
+sd(1:10)
+median(1:10)
+min(1:10)
+max(1:10)
+```
+
+```{r 4.6}
+1:15 -> data1
+seq(from = 2,
+    to = 30,
+    by = 2) -> data2
+data1 + data2
+```
+
+```{r 4.7, fig.width=6.5}
+1:15 -> ind_var
+3 * ind_var + 4 -> dep_var
+plot(ind_var, dep_var,
+     main = "Noiseless data")
+
+set.seed(42)
+runif(n = 15,
+      min = -5,
+      max = 5) + dep_var -> dep_var
+plot(ind_var, dep_var,
+     main = "Noisy data",
+     sub = "Compare to Figure 4.11")
+```
+
+```{r 4.8}
+lm(dep_var ~ ind_var) -> y_lm
+summary(y_lm)
+kable(coefficients(summary(y_lm)),
+      digits = 3)
+
+{
+  plot(ind_var, dep_var,      # Plot the data
+       main = "Dummy Data",   # Change the title above the plot
+       xlab = "X",            # set the x-axis label
+       ylab = "Y",            # set the y-axis label
+       xlim = c(0,16),        # set the x-axis range 
+       ylim = c(0,50),        # set the y-axis range
+       pch = 16,              # Use a solid dot, not an open circle
+       cex = 0.8)             # make the dots a little smaller
+  abline(a = y_lm$coef[1],    # Add a line to the plot, with
+                              #  intercept a
+         b = y_lm$coef[2],    #  and slope b
+         col = "darkgreen")   #  and use a dark green color
+  text(1, 40,                 # Put some text info on the plot
+       # "paste" together the text and the slope, 
+       #   rounded to 2 digits. Put the lower left point of
+       #   that text at the point (1,40) on the graph:
+       labels = paste0("slope = ", 
+                      round(y_lm$coef[2], digits = 2)), 
+       adj = c(0,0))
+  text(1, 35,                 # Put some more text on the plot
+       labels = paste("intercept = ", 
+                      round(y_lm$coef[1], digits = 2)),
+       adj = c(0,0))
+}
 ```
 

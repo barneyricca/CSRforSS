@@ -1,0 +1,165 @@
+---
+title: "Chapter 10"
+author: "BPR"
+date: "6/24/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+{         # Put the cursor on this line, and run it; because
+          #  of the curly braces, all the code within
+          #  the braces will be run.
+  c("data.table",   # fread() for FAST and flexible data input
+    "dplyr",        # Data wrangling
+    "dtplyr",       # For faster data wrangling with tidyverse structure
+    "dtw",          # Dynamic time warping
+    "gridExtra",    # For better table printing
+    "here",         # To assist with folder structure
+    "TDA") ->  # To fit power law data; MASS::fitdistr() can't
+  package_names
+
+  for (package_name in package_names) {
+    if (!is.element(package_name, installed.packages()[, 1])) {
+      install.packages(package_name, repos = "http://lib.stat.cmu.edu/R/CRAN")
+    }
+    library(package_name,
+            character.only = TRUE,
+            quietly = TRUE,
+            verbose = FALSE
+    )
+  }
+  rm(list = c("package_names", "package_name"))
+}
+
+# Reproducibility:
+set_here()      # This helps with folder structure when shifting computers
+
+# Usually, seeds for random number generation would be set here. They are, for
+#  pedagogical reasons, set with each snippet of code.
+
+# Preferences:
+options(show.signif.stars = FALSE) # Do not show significance stars! Showing
+                                   #  significance stars encourages the
+                                   #  conflation of significant and effect
+                                   #  size.
+options(digits = 5)                # Round to 5 digits
+```
+
+```{r S10.1_F10.1}
+fread(here("../Data/flight_times.csv")) -> flight_df
+as.matrix(flight_df[,-1]) -> flight_mat
+colnames(flight_mat) -> rownames(flight_mat)
+hclust(as.dist(flight_mat),
+       method = "single") -> flight_cl
+plot(flight_cl,
+     main = "Cities clustered by flight times",
+     xlab = "",
+     sub = "",
+     hang = -1)
+```
+
+```{r F10.2}
+fread(here("../Data/flight_times.csv")) -> flight_df
+as.matrix(flight_df[,-1]) -> flight_mat
+colnames(flight_mat) -> rownames(flight_mat)
+hclust(as.dist(flight_mat),
+       method = "average") -> flight_cl
+plot(flight_cl,
+     main = "Cities clustered by flight times",
+     xlab = "",
+     sub = "",
+     hang = -1)
+```
+
+```{r S10.2_F10.3}
+fread(here("../Data/teacher_z.csv")) -> teacher_df
+
+# Create a matrix of Euclidean distances (a la Pythagoras)
+matrix(0,
+       nrow = nrow(teacher_df),
+       ncol = nrow(teacher_df)) -> teach_mat
+
+for(i in 1:nrow(teacher_df)) {
+  for(j in 1:nrow(teacher_df)) {
+    sqrt(sum((teacher_df[j,] - teacher_df[i,]) * 
+               (teacher_df[j,] - teacher_df[i,]))) -> teach_mat[i,j]
+  }
+}
+
+hclust(as.dist(teach_mat),
+       method = "average") -> teach_cl
+{
+  plot(teach_cl,
+       labels = FALSE,
+       hang = -1,
+       main = "Teacher clusters",
+       xlab = "",
+       sub = "")
+  abline(h = 5, col = "blue")
+  abline(h = 3.7, col = "green")
+  abline(h = 3.4, col = "brown")
+}
+```
+
+```{r F10.4_S10.3}
+# Fictitious data
+c(0, seq(from = 2, to = 20, by = 2), 0, 0) -> A
+seq(from = 11, to = 9, length.out = 13) -> B
+c(0, 0, seq(from = 2, to = 20, by = 2), 0) -> C
+
+# Plots
+#par() -> old_par
+#par(mfrow = c(3, 1))
+plot(A, type = 'l',
+     xlab = "A",
+     ylab = "",
+     main = "",
+     ylim = c(0, 20))
+plot(B, type = 'l',
+     xlab = "B",
+     ylab = "",
+     main = "",
+     ylim = c(0, 20))
+plot(C, type = 'l',
+     xlab = "C",
+     ylab = "",
+     main = "",
+     ylim = c(0, 20))
+
+
+# Distance Calculations
+sqrt(sum((A-B)*(A-B))) -> AB
+sqrt(sum((B-C)*(B-C))) -> BC
+sqrt(sum((A-C)*(A-C))) -> AC
+
+# Distances
+AB
+BC
+AC
+```
+
+```{r S10.4}
+c(0, seq(from = 2, to = 20, by = 2), 0, 0) -> A
+seq(from = 11, to = 9, length.out = 13) -> B
+c(0, 0, seq(from = 1, to = 20, by = 2), 0) -> C
+dtw(A, B) -> AB
+dtw(A, C) -> AC
+dtw(B, C) -> BC
+AB$distance
+BC$distance
+AC$distance
+```
+
+
+```{r F10.21}
+# No good; try the polynomial with curve()
+c(1, 3, 4, 5, 6, 8, 9, 10, 11, 12) -> x
+c(0, 20, 16, 15, 8, 17, 5, 10, 6, 3) -> y
+{
+  plot(x, y, pch = 16)
+  lines(lowess(x, y, 1/3))
+}
+
+```
+
