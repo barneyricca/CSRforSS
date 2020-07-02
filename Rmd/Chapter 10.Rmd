@@ -10,12 +10,14 @@ knitr::opts_chunk$set(echo = TRUE)
 {         # Put the cursor on this line, and run it; because
           #  of the curly braces, all the code within
           #  the braces will be run.
-  c("data.table",   # fread() for FAST and flexible data input
+  c("bmp",          # Read .BMP files
+    "data.table",   # fread() for FAST and flexible data input
     "dplyr",        # Data wrangling
     "dtplyr",       # For faster data wrangling with tidyverse structure
     "dtw",          # Dynamic time warping
     "gridExtra",    # For better table printing
     "here",         # To assist with folder structure
+    "R.matlab",     # To read matlab data from Zhang et al. (2020)
     "TDA") ->  # To fit power law data; MASS::fitdistr() can't
   package_names
 
@@ -44,6 +46,64 @@ options(show.signif.stars = FALSE) # Do not show significance stars! Showing
                                    #  conflation of significant and effect
                                    #  size.
 options(digits = 5)                # Round to 5 digits
+```
+
+```{r}
+mat_cover <- function(bwmat, rad) {
+  # This function accepts a square matrix of 0s and 1s, and covers
+  #  it with circles of radius rad.
+  # The units of both of these will be in pixels.
+  if(ncol(bwmat) != nrow(bwmat)) {
+    return(NA)
+  }
+  bwmat -> new_bw_mat
+  
+  # Probably it is fastest to create a mask of changes, and then
+  #  apply it. Here's one quarter of it. 
+  # Note that the axes are at row & column, and so are not
+  #  in the matrix.
+  matrix(1,
+         nrow = rad,
+         ncol = rad) -> mask
+  rad * rad -> rad2
+  for(i in 1:rad) {
+    for(j in 1:rad) {
+      if(i*i+j*j <= rad2) {
+        0 -> mask[i,j]
+      }
+    }
+  }
+  
+  # The application may be a call for Rcpp. For now, let's
+  #  try to avoid that. See how long this takes
+  nrow(new_bw_mat) -> nr
+  for(r in rad:(nr - rad)) {
+    for(c in rad:(nr - rad)) {
+      if(bwmat[r,c] == 0) {
+        # 4 quadrants, then do the axes
+        for(rz in 1:rad) {
+          for(cz in 1:rad) {
+            if(mask[rz, cz] == 0) {
+              0 -> new_bw_mat[r - rz, c - cz]
+              0 -> new_bw_mat[r - rz, c + cz]
+              0 -> new_bw_mat[r + rz, c - cz]
+              0 -> new_bw_mat[r + rz, c + cz]
+            }
+          }
+        }
+        # Now for the axes
+        for(ax in 1:rad) {
+          0 -> new_bw_mat[r - ax, c]
+          0 -> new_bw_mat[r + ax, c]
+          0 -> new_bw_mat[r, c + ax]
+          0 -> new_bw_mat[r, c - ax]
+        }
+      }
+    }
+  }
+
+  return(new_bw_mat)
+}
 ```
 
 ```{r S10.1_F10.1}
@@ -140,9 +200,12 @@ AC
 ```
 
 ```{r S10.4}
+# Create some time series
 c(0, seq(from = 2, to = 20, by = 2), 0, 0) -> A
 seq(from = 11, to = 9, length.out = 13) -> B
-c(0, 0, seq(from = 1, to = 20, by = 2), 0) -> C
+c(0, 0, seq(from = 2, to = 20, by = 2), 0) -> C
+
+# Dynamic time warping
 dtw(A, B) -> AB
 dtw(A, C) -> AC
 dtw(B, C) -> BC
@@ -151,15 +214,222 @@ BC$distance
 AC$distance
 ```
 
-
-```{r F10.21}
-# No good; try the polynomial with curve()
-c(1, 3, 4, 5, 6, 8, 9, 10, 11, 12) -> x
-c(0, 20, 16, 15, 8, 17, 5, 10, 6, 3) -> y
-{
-  plot(x, y, pch = 16)
-  lines(lowess(x, y, 1/3))
+```{r F10.14}
+# This is just a quick image that I made for this purpose
+if(is.bmp(here("../Images/AB16.bmp"))) {
+  read.bmp(here("../Images/AB16.bmp")) -> AB_arr
 }
 
+# Do some cleaning of the image; convert it to a black-and-white
+#  image. You don't care about this except to know that the next
+#  command converts an almost black-and-white image to an
+#  actual black-and-white image.
+floor(AB_arr[,,] / 128.0)[,,1] -> bw_mat
+
+
+```
+
+
+```{r}
+if(is.bmp(here("../Images/AB1.bmp"))) {
+  read.bmp(here("../Images/AB1.bmp")) -> AB_arr
+}
+
+# Do some cleaning of the image; convert it to a black-and-white
+#  image. You don't care about this except to know that the next
+#  command converts an almost black-and-white image to an
+#  actual black-and-white image.
+floor(AB_arr[,,] / 128.0)[,,1] -> bw_mat
+{
+  plot(c(1, nrow(bwmat)), c(1, nrow(bwmat)),
+       type = 'n',
+       xlab = "",
+       ylab = "",
+       asp = 1)
+  as.raster(bwmat) -> image
+  rasterImage(bwmat, 1, 1, nrow(bwmat), nrow(bwmat),
+              interpolate = FALSE)
+}
+
+mat_cover(bw_mat, 3) -> mat1
+{
+  plot(c(1, nrow(bw_mat)), c(1, nrow(bw_mat)),
+       type = 'n',
+       xlab = "",
+       ylab = "",
+       asp = 1)
+  as.raster(mat1) -> image
+  rasterImage(mat1, 1, 1, nrow(mat1), nrow(mat1),
+              interpolate = FALSE)
+}
+
+```
+
+
+
+```{r F10.20}
+# Create the coordinates of all the features:
+c(-5, 0, 3, 4, 5, 7, 9, 10, 12) -> x_feat
+c(0, 18, 9, 10, 6, 13, 2, 4, 0) -> y_feat
+
+# Use a spline to interpolate between the points, creating
+#  a landscape:
+spline(x_feat, y_feat, n = 10*length(x)) -> ss
+
+# Plot the landscape, without anything else:
+plot(ss,
+     type = 'l',
+     main = "",
+     xlab = "",
+     ylab = "",
+     axes = FALSE,
+     frame.plot = FALSE)
+```
+
+
+```{r F10.21}
+# Create the coordinates of all the features:
+c(-5, 0, 3, 4, 5, 7, 9, 10, 12) -> x_feat
+c(0, 18, 9, 10, 6, 13, 2, 4, 0) -> y_feat
+
+# Use a spline to interpolate between the points, creating
+#  a landscape:
+spline(x_feat, y_feat, n = 10*length(x)) -> ss
+
+# Plot the landscape and water level:
+{
+plot(ss,
+     type = 'l',
+     main = "",
+     xlab = "",
+     ylab = "",
+     ylim = c(0, 25),
+     axes = FALSE,
+     frame.plot = FALSE)
+  rect(-5,0,12,24,
+       density = 10,
+       angle = 45,
+       col = "lightblue")
+  segments(x0 = -5, y0 = 24, x1 = 12, col = "blue")
+}
+```
+
+
+```{r F10.22}
+# Create the coordinates of all the features:
+c(-5, 0, 3, 4, 5, 7, 9, 10, 12) -> x_feat
+c(0, 18, 9, 10, 6, 13, 2, 4, 0) -> y_feat
+
+# Use a spline to interpolate between the points, creating
+#  a landscape:
+spline(x_feat, y_feat, n = 10*length(x)) -> ss
+
+# (a) Plot the landscape with the first island
+{
+  plot(ss,
+     type = 'l',
+     main = "",
+     xlab = "",
+     ylab = "",
+     axes = FALSE,
+     frame.plot = FALSE)
+  rect(-5,0,12,22,
+       density = 10,
+       angle = 45,
+       col = "lightblue")
+  segments(x0 = -5, y0 = 22, x1 = 12, col = "blue")
+}
+
+# (b) Plot the landscape with the first & second islands
+{
+  plot(ss,
+     type = 'l',
+     main = "",
+     xlab = "",
+     ylab = "",
+     axes = FALSE,
+     frame.plot = FALSE)
+  rect(-5, 0, 12, 12,
+       density = 10,
+       angle = 45,
+       col = "lightblue")
+  segments(x0 = -5, y0 = 12, x1 = 12, col = "blue")
+}
+
+# (c) Plot the landscape with the first three islands
+{
+  plot(ss,
+     type = 'l',
+     main = "",
+     xlim = c(-5,12),
+     xlab = "",
+     ylab = "",
+     axes = FALSE,
+     frame.plot = FALSE)
+  rect(-5,0,12,9.5,
+       density = 10,
+       angle = 45,
+       col = "lightblue")
+  segments(x0 = -5, y0 = 9.5, x1 = 12, col = "blue")
+}
+
+# (d) Plot the landscape with the first land bridge
+{
+  plot(ss,
+     type = 'l',
+     main = "",
+     xlim = c(-5,12),
+     xlab = "",
+     ylab = "",
+     axes = FALSE,
+     frame.plot = FALSE)
+  rect(-5,0,12,7,
+       density = 10,
+       angle = 45,
+       col = "lightblue")
+  segments(x0 = -5, y0 = 7, x1 = 12, col = "blue")
+}
+```
+
+
+```{r F10.23}
+# Create the coordinates of all the features:
+c(-5, 0, 3, 4, 5, 7, 9, 10, 12) -> x_feat
+c(0, 18, 9, 10, 6, 13, 2, 4, 0) -> y_feat
+
+# Use a spline to interpolate between the points, creating
+#  a landscape:
+spline(x_feat, y_feat, n = 10*length(x)) -> ss
+
+{
+# Plot the landscape
+  plot(ss,
+     type = 'l',
+     main = "",
+     xlim = c(-5.1,12),
+     xlab = "",
+     ylab = "",
+     axes = FALSE,
+     frame.plot = FALSE)
+# Need a bunch of horizontal lines, at the appropriate
+#  spots. ID those from local maxima and minima in ss$y, which
+#  occur at positions 17, 42, 48, 54, 64, 65, and 84. These
+#  represent b1, d3, b3, d2, b2, d4, and b4, respectively
+  c(22.7702, 12.9682, 10.2298, 5.5292) -> births
+  c("b1", "b2", "b3", "b4") -> birth_names
+  c("d2", "d3", "d4") -> death_names
+  c(5.9320, 8.8352, 1.9725) -> deaths
+  segments(x0 = -4.8,
+           y0 = c(births, deaths),
+           x1 = 12,
+         lty = 2,
+         lwd = 0.5)
+# Label the lines:
+  text(-5.1, 
+       c(births, deaths) +
+         c(0,0,0,-0.5,0,0.5,0), 
+       c(birth_names, death_names),
+       cex = 0.8)
+}
 ```
 
