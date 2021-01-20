@@ -5,20 +5,26 @@ date: "6/24/2020"
 output: word_document
 ---
 
+Possibly better plots in .docx:
+https://www.r-bloggers.com/r-tips-and-tricks-paste-a-plot-from-r-to-a-word-file/
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 {         # Put the cursor on this line, and run it; because
           #  of the curly braces, all the code within
           #  the braces will be run.
   c("bmp",          # Read .BMP files
-    "data.table",   # fread() for FAST and flexible data input
+    "data.table",   # fread() for fast data input
     "dplyr",        # Data wrangling
-    "dtplyr",       # For faster data wrangling with tidyverse structure
+    "dtplyr",       # For faster tidyverse data wrangling
     "dtw",          # Dynamic time warping
     "gridExtra",    # For better table printing
     "here",         # To assist with folder structure
+    "igraph",       #
+    "raster",       # For image processing and coverings
     "R.matlab",     # To read matlab data from Zhang et al. (2020)
-    "TDA") ->  # To fit power law data; MASS::fitdistr() can't
+    "Rcpp",         # For faster processing of Betti numbers
+    "TDA") ->
   package_names
 
   for (package_name in package_names) {
@@ -37,9 +43,6 @@ knitr::opts_chunk$set(echo = TRUE)
 # Reproducibility:
 set_here()      # This helps with folder structure when shifting computers
 
-# Usually, seeds for random number generation would be set here. They are, for
-#  pedagogical reasons, set with each snippet of code.
-
 # Preferences:
 options(show.signif.stars = FALSE) # Do not show significance stars! Showing
                                    #  significance stars encourages the
@@ -48,7 +51,7 @@ options(show.signif.stars = FALSE) # Do not show significance stars! Showing
 options(digits = 5)                # Round to 5 digits
 ```
 
-```{r}
+```{r functions}
 mat_cover <- function(bwmat, rad) {
   # This function accepts a square matrix of 0s and 1s, and covers
   #  it with circles of radius rad.
@@ -62,6 +65,9 @@ mat_cover <- function(bwmat, rad) {
   #  apply it. Here's one quarter of it. 
   # Note that the axes are at row & column, and so are not
   #  in the matrix.
+  #
+  # Might go faster by doing only 1/8 of the circle and
+  #  then using that 8 times, plus axes and 45 degree lines.
   matrix(1,
          nrow = rad,
          ncol = rad) -> mask
@@ -74,7 +80,7 @@ mat_cover <- function(bwmat, rad) {
     }
   }
   
-  # The application may be a call for Rcpp. For now, let's
+  # The application may call for Rcpp. For now, let's
   #  try to avoid that. See how long this takes
   nrow(new_bw_mat) -> nr
   for(r in rad:(nr - rad)) {
@@ -104,11 +110,29 @@ mat_cover <- function(bwmat, rad) {
 
   return(new_bw_mat)
 }
+
+cover_figure_out <- function(bwmat, file_name) {
+  png(here(paste0("/Images/",file_name)),
+      width = 5,
+      height = 5,
+      units = "in")
+  plot(c(1, nrow(bwmat)), c(1, nrow(bwmat)),
+       type = 'n',
+       xlab = "",
+       ylab = "",
+       asp = 1)
+  as.raster(bwmat) -> image
+  rasterImage(bwmat, 1, 1, nrow(bwmat), nrow(bwmat),
+              interpolate = FALSE)
+  dev.off()
+  return()
+}
 ```
 
+Snippet 10.1 for Figure 10.1
 ```{r S10.1_F10.1}
-fread(here("../Data/flight_times.csv")) -> flight_df
-as.matrix(flight_df[,-1]) -> flight_mat
+as.matrix(fread("http://citadel.sjfc.edu/faculty/bricca/Data/flight_times.csv",
+      drop = 1)) -> flight_mat
 colnames(flight_mat) -> rownames(flight_mat)
 hclust(as.dist(flight_mat),
        method = "single") -> flight_cl
@@ -119,6 +143,7 @@ plot(flight_cl,
      hang = -1)
 ```
 
+Figure 10.2
 ```{r F10.2}
 fread(here("../Data/flight_times.csv")) -> flight_df
 as.matrix(flight_df[,-1]) -> flight_mat
@@ -132,6 +157,8 @@ plot(flight_cl,
      hang = -1)
 ```
 
+
+Use cluster rectangles in the next one - it would be better!
 ```{r S10.2_F10.3}
 fread(here("../Data/teacher_z.csv")) -> teacher_df
 
@@ -159,6 +186,18 @@ hclust(as.dist(teach_mat),
   abline(h = 5, col = "blue")
   abline(h = 3.7, col = "green")
   abline(h = 3.4, col = "brown")
+}
+
+{
+  plot(teach_cl,
+       labels = FALSE,
+       hang = -1,
+       main = "Teacher clusters",
+       xlab = "",
+       sub = "")
+  rect.hclust(teach_cl,
+              k = 5,
+              which = c(1, 2, 5))
 }
 ```
 
@@ -199,6 +238,14 @@ BC
 AC
 ```
 
+Audio data from [Databricks (n.d.)](https://pages.databricks.com/rs/094-YMS-629/images/dynamic-time-warping-background.html?_ga=2.202875857.1568660955.1593104770-686929298.1593104770)
+
+https://dennyglee.files.wordpress.com/2019/03/doors-and-corners-kid_thats-where-they-get-you-2.wav
+
+
+https://dennyglee.files.wordpress.com/2019/03/doors-and-corners-kid_thats-where-they-get-you.wav
+
+
 ```{r S10.4}
 # Create some time series
 c(0, seq(from = 2, to = 20, by = 2), 0, 0) -> A
@@ -214,7 +261,7 @@ BC$distance
 AC$distance
 ```
 
-```{r F10.14}
+```{r F10.13-17}
 # This is just a quick image that I made for this purpose
 if(is.bmp(here("../Images/AB16.bmp"))) {
   read.bmp(here("../Images/AB16.bmp")) -> AB_arr
@@ -226,45 +273,52 @@ if(is.bmp(here("../Images/AB16.bmp"))) {
 #  actual black-and-white image.
 floor(AB_arr[,,] / 128.0)[,,1] -> bw_mat
 
+# Now, create a bunch of figures with coverings of different
+#  radii balls.
+cover_figure_out(bw_mat, "Figure10-13.png")
 
-```
-
-
-```{r}
-if(is.bmp(here("../Images/AB1.bmp"))) {
-  read.bmp(here("../Images/AB1.bmp")) -> AB_arr
-}
-
-# Do some cleaning of the image; convert it to a black-and-white
-#  image. You don't care about this except to know that the next
-#  command converts an almost black-and-white image to an
-#  actual black-and-white image.
-floor(AB_arr[,,] / 128.0)[,,1] -> bw_mat
-{
-  plot(c(1, nrow(bwmat)), c(1, nrow(bwmat)),
-       type = 'n',
-       xlab = "",
-       ylab = "",
-       asp = 1)
-  as.raster(bwmat) -> image
-  rasterImage(bwmat, 1, 1, nrow(bwmat), nrow(bwmat),
-              interpolate = FALSE)
-}
+mat_cover(bw_mat, 1) -> mat1
+cover_figure_out(mat1, "Figure10-14a.png")
 
 mat_cover(bw_mat, 3) -> mat1
-{
-  plot(c(1, nrow(bw_mat)), c(1, nrow(bw_mat)),
-       type = 'n',
-       xlab = "",
-       ylab = "",
-       asp = 1)
-  as.raster(mat1) -> image
-  rasterImage(mat1, 1, 1, nrow(mat1), nrow(mat1),
-              interpolate = FALSE)
-}
+cover_figure_out(mat1, "Figure10-14b.png")
 
+mat_cover(bw_mat, 5) -> mat1
+cover_figure_out(mat1, "Figure10-14c.png")
+
+mat_cover(bw_mat, 7) -> mat1
+cover_figure_out(mat1, "Figure10-14d.png")
+
+mat_cover(bw_mat, 9) -> mat1
+cover_figure_out(mat1, "Figure10-14d.png")
+
+mat_cover(bw_mat, 11) -> mat1
+cover_figure_out(mat1, "Figure10-14e.png")
+
+mat_cover(bw_mat, 13) -> mat1
+cover_figure_out(mat1, "Figure10-14f.png")
+
+mat_cover(bw_mat, 15) -> mat1
+cover_figure_out(mat1, "Figure10-14g.png")
+
+mat_cover(bw_mat, 17) -> mat1
+cover_figure_out(mat1, "Figure10-14h.png")
+
+mat_cover(bw_mat, 19) -> mat1
+cover_figure_out(mat1, "Figure10-14i.png")
+
+mat_cover(bw_mat, 21) -> mat1
+cover_figure_out(mat1, "Figure10-14j.png")
+
+mat_cover(bw_mat, 23) -> mat1
+cover_figure_out(mat1, "Figure10-14k.png")
+
+mat_cover(bw_mat, 25) -> mat1
+cover_figure_out(mat1, "Figure10-14l.png")
+
+mat_cover(bw_mat, 27) -> mat1
+cover_figure_out(mat1, "Figure10-14m.png")
 ```
-
 
 
 ```{r F10.20}
@@ -274,7 +328,7 @@ c(0, 18, 9, 10, 6, 13, 2, 4, 0) -> y_feat
 
 # Use a spline to interpolate between the points, creating
 #  a landscape:
-spline(x_feat, y_feat, n = 10*length(x)) -> ss
+spline(x_feat, y_feat, n = 10*length(x_feat)) -> ss
 
 # Plot the landscape, without anything else:
 plot(ss,
@@ -294,7 +348,7 @@ c(0, 18, 9, 10, 6, 13, 2, 4, 0) -> y_feat
 
 # Use a spline to interpolate between the points, creating
 #  a landscape:
-spline(x_feat, y_feat, n = 10*length(x)) -> ss
+spline(x_feat, y_feat, n = 10*length(x_feat)) -> ss
 
 # Plot the landscape and water level:
 {
@@ -322,7 +376,7 @@ c(0, 18, 9, 10, 6, 13, 2, 4, 0) -> y_feat
 
 # Use a spline to interpolate between the points, creating
 #  a landscape:
-spline(x_feat, y_feat, n = 10*length(x)) -> ss
+spline(x_feat, y_feat, n = 10*length(x_feat)) -> ss
 
 # (a) Plot the landscape with the first island
 {
@@ -399,7 +453,7 @@ c(0, 18, 9, 10, 6, 13, 2, 4, 0) -> y_feat
 
 # Use a spline to interpolate between the points, creating
 #  a landscape:
-spline(x_feat, y_feat, n = 10*length(x)) -> ss
+spline(x_feat, y_feat, n = 10*length(x_feat)) -> ss
 
 {
 # Plot the landscape
@@ -413,17 +467,27 @@ spline(x_feat, y_feat, n = 10*length(x)) -> ss
      frame.plot = FALSE)
 # Need a bunch of horizontal lines, at the appropriate
 #  spots. ID those from local maxima and minima in ss$y, which
-#  occur at positions 17, 42, 48, 54, 64, 65, and 84. These
-#  represent b1, d3, b3, d2, b2, d4, and b4, respectively
+#  occur at positions 17, 42, 48, 54, 64, 75, and 84. These
+#  represent b1, d3, b3, d2, b2, d4, and b4, respectively.
+# Because this is just a sample figure, the identifications
+#  were done by inspection.
   c(22.7702, 12.9682, 10.2298, 5.5292) -> births
   c("b1", "b2", "b3", "b4") -> birth_names
   c("d2", "d3", "d4") -> death_names
   c(5.9320, 8.8352, 1.9725) -> deaths
+  c(17, 64, 47, 84, 64, 47, 84) -> feat_x
   segments(x0 = -4.8,
            y0 = c(births, deaths),
-           x1 = 12,
+           x1 = ss$x[feat_x],
          lty = 2,
          lwd = 0.5)
+# Bar codes on graph
+  segments(x0 = ss$x[feat_x[1:4]],
+           y0 = births,
+           y1 = c(-5, deaths),
+           lwd = 1.5,
+           col = "blue")
+# Add an arrow or an infinity to the first bar code
 # Label the lines:
   text(-5.1, 
        c(births, deaths) +
@@ -431,5 +495,513 @@ spline(x_feat, y_feat, n = 10*length(x)) -> ss
        c(birth_names, death_names),
        cex = 0.8)
 }
+```
+
+
+Zhang data:
+https://github.com/mengsenz/TopoDynamics/tree/master/data
+
+
+
+```{r}
+XX1 <- circleUnif(20)
+XX2 <- circleUnif(20, r = 0.2)
+
+DiagLim <- 5
+maxdimension <- 1
+
+Diag1 <- ripsDiag(XX1, maxdimension, DiagLim, printProgress = FALSE)
+Diag2 <- ripsDiag(XX2, maxdimension, DiagLim, printProgress = FALSE)
+
+bottleneckDist <- bottleneck(Diag1[["diagram"]], Diag2[["diagram"]],
+                             dimension = 1)
+print(bottleneckDist)
+
+
+
+## EXAMPLE 1: rips diagram for circles (euclidean distance)
+X <- circleUnif(30)
+maxscale <- 5
+maxdimension <- 1
+## note that the input X is a point cloud
+DiagRips <- ripsDiag(
+    X = X, maxdimension = maxdimension, maxscale = maxscale,
+    library = "Dionysus", location = TRUE, printProgress = TRUE)
+
+# plot
+layout(matrix(c(1, 3, 2, 2), 2, 2))
+plot(X, cex = 0.5, pch = 19)
+title(main = "Data")
+plot(DiagRips[["diagram"]])
+title(main = "rips Diagram")
+one <- which(
+    DiagRips[["diagram"]][, 1] == 1 &
+    DiagRips[["diagram"]][, 3] - DiagRips[["diagram"]][, 2] > 0.5)
+{
+plot(X, col = 2, main = "Representative loop of data points")
+for (i in seq(along = one)) {
+  for (j in seq_len(dim(DiagRips[["cycleLocation"]][[one[i]]])[1])) {
+    lines(
+	    DiagRips[["cycleLocation"]][[one[i]]][j, , ], pch = 19, cex = 1,
+        col = i)
+  }
+}
+}
+```
+https://github.com/mengsenz/TopoDynamics for the Zhang et al. (2020) data and Matlab analysis.
+
+```{r}
+readMat("https://github.com/mengsenz/TopoDynamics/blob/master/data/data_3agents.mat?raw=true") -> coord3
+
+```
+
+
+
+
+Sampling from two arcs, and TDA
+
+```{r sampleExample}
+100 -> N
+set.seed(42)
+circleUnif(N) -> circ_samp
+circ_samp[which(circ_samp[1:N,1] < -.5),] -> samp1
+circ_samp[which(circ_samp[1:N,1] > .8),] -> samp2
+rbind(samp1, samp2) -> X
+
+
+
+maxscale <- 5
+maxdimension <- 1
+## note that the input X is a point cloud
+DiagRips <- ripsDiag(
+    X = X, maxdimension = maxdimension, maxscale = maxscale,
+    library = "Dionysus", location = TRUE, printProgress = TRUE)
+
+# plot
+{
+  layout(matrix(c(1, 3, 2, 2), 2, 2))
+  plot(X, cex = 0.5, pch = 19)
+  title(main = "Data")
+  plot(DiagRips[["diagram"]])
+  title(main = "rips Diagram")
+}
+
+{
+one <- which(
+    DiagRips[["diagram"]][, 1] == 1 &
+    DiagRips[["diagram"]][, 3] - DiagRips[["diagram"]][, 2] > 0.5)
+plot(X, col = 2, main = "Representative loop of data points")
+for (i in seq(along = one)) {
+  for (j in seq_len(dim(DiagRips[["cycleLocation"]][[one[i]]])[1])) {
+    lines(
+	    DiagRips[["cycleLocation"]][[one[i]]][j, , ], pch = 19, cex = 1,
+        col = i)
+  }
+}
+}
+
+```
+
+Let's try ripsDiag() with AB16:
+```{r}
+# This is just a quick image that I made for this purpose
+if(is.bmp(here("../Images/AB16.bmp"))) {
+  read.bmp(here("../Images/AB16.bmp")) -> AB_arr
+}
+
+# Do some cleaning of the image; convert it to a black-and-white
+#  image. You don't care about this except to know that the next
+#  command converts an almost black-and-white image to an
+#  actual black-and-white image.
+floor(AB_arr[,,] / 128.0)[,,1] -> bw_mat
+
+{
+  plot(c(1, nrow(bw_mat)), c(1, nrow(bw_mat)),
+       type = 'n',
+       xlab = "",
+       ylab = "",
+       asp = 1)
+  as.raster(bw_mat) -> image
+  rasterImage(bw_mat, 1, 1, nrow(bw_mat), nrow(bw_mat),
+              interpolate = FALSE)
+}
+
+# Create the coordinate matrix for bw_mat:
+length(which(bw_mat == 0)) -> nr
+matrix(0, ncol = 2, nrow = nr) -> X
+1 -> index
+for(rw in 1:nrow(bw_mat)) {
+  for(cl in 1:ncol(bw_mat)) {
+    if(bw_mat[rw, cl] == 0) {
+      rw -> X[index, 1]
+      cl -> X[index, 2]
+      index + 1 -> index
+    }
+  }
+}
+
+
+maxscale <- 5
+maxdimension <- 1
+## note that the input X is a point cloud
+DiagRips <- ripsDiag(
+    X = X, maxdimension = maxdimension, maxscale = maxscale,
+    library = "Dionysus", location = TRUE, printProgress = TRUE)
+
+# plot
+{
+  plot(DiagRips[["diagram"]])
+  title(main = "rips Diagram")
+}
+
+```
+
+```{r}
+n <- 300
+XX <- circleUnif(n)
+
+## Ranges of the grid
+Xlim <- c(-1.8, 1.8)
+Ylim <- c(-1.6, 1.6)
+lim <- cbind(Xlim, Ylim)
+by <- 0.05
+
+#Distance Function Diagram of the sublevel sets
+Diag1 <- gridDiag(XX, distFct, lim = lim, by = by, sublevel = TRUE,
+                  printProgress = TRUE) 
+
+#plot
+{
+plot(Diag1[["diagram"]])
+title(main = "Distance Function Diagram")
+}
+```
+neither ripsDiag nor gridDiag produces the correct results. I dunno why, but I can work the above to create this. Probably move it to C++ for speed, but let's see.
+
+
+
+
+OK, let's put in some coverings routines. Can build from FloodFill.cpp of Jeff Lenish' project, and then count the number of white patches that do NOT contain an edge; each of those would be a hole, right (assuming that there is a white border all the way around)? Will have to add a check for white border.
+
+Might be able to speed up the patch stuff by ignoring the wrap-around.
+
+```{r}
+sourceCpp(here("./C++/FloodFill.cpp"))
+
+#as.matrix(fread(file = here("races-11-11-0.76-0.3-1.txt"),
+as.matrix(fread(file = file.choose(),
+                skip = 1,
+                header = FALSE)) -> history_mat
+nrow(history_mat) / 11 -> n_turns
+# There's gotta be a faster way, but I don't see it immediately.
+array(0, dim = c(n_turns, 11, 11)) -> history_arr
+for(turn in 1:n_turns) {
+  for(row in 1:11) {
+    for(column in 1:11) {
+      history_mat[11 * turn + row - 11, column] ->
+        history_arr[turn, row, column]
+    }
+  }
+}
+
+table(history_arr[1,,])
+```
+Wow...the number of species 1 and species 2 is no where near correct; these are just off because of the initialization, which should have been 1-2-0, but was implemented as 0-1-2. Oh, well.
+
+
+Call count patches via Rcpp
+```{r countPatches}
+#sourceCpp(here("../C++/FloodFillQ.cpp"))
+#sourceCpp(here("../C++/FloodFill.cpp"))
+
+# This is just a quick image that I made for this purpose
+if(is.bmp(here("../Images/AB16.bmp"))) {
+  read.bmp(here("../Images/AB16.bmp")) -> AB_arr
+}
+
+# Do some cleaning of the image; convert it to a black-and-white
+#  image. You don't care about this except to know that the next
+#  command converts an almost black-and-white image to an
+#  actual black-and-white image.
+floor(AB_arr[,,] / 128.0)[,,1] -> bw_mat
+
+# This works! However, it only does the 1s, and not the 0s.
+raster(bw_mat) -> bw_rast
+clump(bw_rast) -> dum1
+length(table(as.matrix(dum1)))      # one more than Betti_1
+#sum(table(as.matrix(dum1)))  # = number of bw_mat[] == 1.
+
+# So now, do the 0s
+-(bw_mat - 1) -> dum2
+as.matrix(clump(raster(dum2))) -> dum3
+length(table(dum3))      # Betti_0
+
+# This gets us which part of the matrix to look at, for diagnostic
+#  purposes
+which(as.matrix(dum3) == 10) -> dum4  # The 10 is arbitrary; there are 16 objects
+dum4 %% nrow(bw_mat) -> dum5
+dum4 %/% nrow(bw_mat) -> dum6
+sort(unique(dum5))
+sort(unique(dum6))
+
+# Look at: bw_mat[250:290, 210:250]; this is from looking at dum5 & dum6.
+{
+  plot(c(1, 41), c(1, 41),
+       type = 'n',
+       xlab = "",
+       ylab = "",
+       asp = 1)
+  as.raster(bw_mat[250:290, 210:250]) -> image
+  rasterImage(bw_mat[250:290, 210:250], 1, 1, 
+              nrow(bw_mat[250:290, 210:250]), nrow(bw_mat[250:290, 210:250]),
+              interpolate = FALSE)
+}
+
+
+
+#turn the clumps into a list
+tot <- max(Clumps, na.rm=TRUE)
+res <- vector("list",tot)
+for (i in 1:tot){
+  res[i] <- list(which(Clumps == i, arr.ind = TRUE))
+}
+# res then prints row and column belonging to each clump.
+```
+
+
+
+
+```{r}
+Diag <- matrix(c(0, 0, 10, 1, 0, 3, 1, 3, 8), ncol = 3, byrow = TRUE)
+DiagLim <- 10
+colnames(Diag) <- c("dimension", "Birth", "Death")
+
+#persistence landscape
+tseq <- seq(0,DiagLim, length = 1000)
+Land1 <- landscape(Diag, dimension = 1, KK = 1, tseq)
+Land0 <- landscape(Diag, dimension = 0, KK = 1, tseq)
+
+{
+  par(mfrow = c(1,2))
+  plot.diagram(Diag)
+
+  plot(tseq, Land0, type = "l", xlab = "t", ylab = "landscape", 
+       asp = 1, col = "black", ylim = c(0,8), xlim = c(0,10))
+  lines(tseq, Land1, type = "l", xlab = "t", ylab = "landscape", 
+        asp = 1, col = 2)
+}
+# Probably should really drop the largest object; there will
+#  always be one.
+```
+
+
+Now, how to keep track of these as the radii change? When two objects merge, which one to keep? When a hole disappears, how do we know which one it is?
+
+* Holes never merge; they only are born and die. Hence, find which pixel of the current hole was part of the previous hole, and go from there. If none were, then new hole was born.
+* Objects merge; they never die and are never born after the original one. Hence, use the lowest patch number for the merged object.
+
+Start with the image; compute $\beta_0$ & $\beta_1$, and store them.
+Then, increase the radius by one pixel at a time, blurring the diagrams a bit at each step. Store the features at each step.
+
+a) Get the holes & objects for the base diagram
+b) Set up an n x 4 matrix (dimension, birth = 0, death = 0, feature number)
+b) Gradually increase the radius while:
+    - Finding holes & objects
+    - Comparing the new holes & object to the old
+    - Killing objects/holes as necessary
+    - Adding holes as necessary (rbind is slow, but it will only happen occasionally)
+    - If the number of features == 2 (i.e., border + object), then quit. Else:
+    - Store new feature matrix as old feature matrix
+```{r coverings}
+if(is.bmp(here("../Images/AB16.bmp"))) {
+  read.bmp(here("../Images/AB16.bmp")) -> AB_arr
+}
+
+# Do some cleaning of the image; convert it to a black-and-white
+#  image.
+floor(AB_arr[,,] / 128.0)[,,1] -> image_mat
+
+# Get the base B0 & B1:
+as.matrix(clump(raster(-(image_mat - 1))), gaps = FALSE) -> B0
+length(table(B0)) -> B0_len
+as.matrix(clump(raster(image_mat)), gaps = FALSE) -> B1
+B1 + B0_len -> B1
+length(table(B1)) -> B1_len
+
+as.integer(names(table(B1))) -> B1_codes
+as.integer(names(table(B0))) -> B0_codes
+
+# Create the initial matrix
+matrix(0,
+       nrow = B0_len + B1_len - 1,
+       ncol = 6) -> bar_codes_mat
+# c("") -> colnames(bar_codes_mat)
+c(rep(0, B0_len), 
+  rep(1, B1_len - 1)) -> bar_codes_mat[,1] # Dimension
+# columns 2 & 3 are birth and death times
+c(1:B0_len, (2+B0_len):(B1_len+B0_len)) -> bar_codes_mat[,4]
+c(table(B0),
+  table(B1)[2:B1_len]) -> # The first B1 clump is the border
+  bar_codes_mat[,5]   # Feature size
+# column 6 is the current feature number (as these get shuffled)
+bar_codes_mat[,4] -> bar_codes_mat[,6]
+
+TRUE -> continue
+1 -> radius
+
+while(continue) {
+  # Cover the image:
+  mat_cover(image_mat, radius) -> working_mat
+  # Clump the image for B1 and B0. gaps = FALSE ensures that
+  #  the results are numbered consecutively 1 to n. This makes the
+  #  rest of the logic work.
+  as.matrix(clump(raster(-(working_mat - 1))),
+            gaps = FALSE) -> B0_new
+  as.matrix(clump(raster(working_mat)),
+            gaps = FALSE) -> B1_new
+  length(table(B0_new)) -> B0_new_len
+  B1_new + B0_new_len -> B1_new
+  length(table(B1_new)) -> B1_new_len
+  # Compare new features to old, quickly. It is possible to get a new
+  #  hole at the same time an old hole dies, so counting the number
+  #  of features is not sufficient.
+  
+  as.integer(names(table(B1_new))) -> B1_new_codes
+  as.integer(names(table(B0_new))) -> B0_new_codes
+
+  matrix(0,
+         ncol = 3,   # dimension, old, new
+         nrow = max(B1_new_len, B1_len) +
+           max(B0_new_len, B0_len)) -> matched_mat
+  c(rep(0, max(B0_new_len, B0_len)),
+    rep(1, max(B1_new_len, B1_len))) -> matched_mat[,1]
+
+  for(i in B0_codes) {
+    for(j in B0_new_codes) {
+      if(any(which(B0 == i) %in% which(B0_new == j))) {
+        # Set the two appropriate cells in matched_mat
+        j -> matched_mat[i,2]
+        i -> matched_mat[j,3]
+        break
+      }
+    }
+  }
+  
+  # The next requires that the B1 are numbered sequentially from
+  #  the B0! This was ensured above.
+
+  for(i in B1_codes[2:length(B1_codes)]) {
+    for(j in B1_new_codes[2:length(B1_new_codes)]) {
+      if(any(which(B1 == i) %in% which(B1_new == j))) {
+        # Set the two appropriate cells in matched_mat
+        j -> matched_mat[i,2]
+        i -> matched_mat[j,3]
+        break
+      }
+    }
+  }
+  
+  # Any matched_mat[,2] == 0 is a birth
+  # Any matched_mat[,3] == 0 is a death
+
+  
+}
+
+
+raster(bw_mat) -> bw_rast
+clump(bw_rast) -> dum1
+length(table(as.matrix(dum1)))      # one more than Betti_1
+#sum(table(as.matrix(dum1)))  # = number of bw_mat[] == 1.
+
+# So now, do the 0s
+-(bw_mat - 1) -> dum2
+as.matrix(clump(raster(dum2))) -> dum3
+length(table(dum3))      # Betti_0
+
+
+```
+
+via Rips filtration
+```{r rips}
+if(is.bmp(here("../Images/AB16.bmp"))) {
+  read.bmp(here("../Images/AB16.bmp")) -> AB_arr
+}
+
+# Do some cleaning of the image; convert it to a black-and-white
+#  image.
+floor(AB_arr[,,] / 128.0)[,,1] -> bw_mat
+
+
+which(as.matrix(bw_mat == 0)) -> zeroes
+as.numeric(zeroes %% nrow(bw_mat)) -> row_num
+as.numeric(zeroes %/% nrow(bw_mat)) -> col_num
+cbind(row_num, col_num) -> X1
+
+c(1, 450) -> Xlim
+c(1, 450) -> Ylim
+cbind(Xlim, Ylim) -> lim
+1 -> by
+# Using too small a "by" creates problems. For example,
+#  by = 0.5 in this analysis created some 9000 features and
+#  took about 12 minutes, as opposed to creating only 133
+#  features and taking about 8 seconds. This sample should only
+#  have 34 features; in the 133 case, 99 of the features were
+#  holes that existed only momentarily.
+
+gridDiag(X = X1,distFct, lim = lim, by = by,
+         printProgress = TRUE) -> bw_grid
+
+plot(bw_grid[["diagram"]])
+
+# confidence set
+B <- 10       ## the number of bootstrap iterations should be higher!
+              ## this is just an example
+alpha <- 0.05
+0.3 -> h
+
+# With B = 10, started at 1:18. Finished 1:20
+set.seed(42)
+cc <- bootstrapDiagram(X1, kde, lim = lim, by = by, sublevel = FALSE, B = B,
+          alpha = alpha, dimension = 1, printProgress = TRUE, h = h)
+
+plot(bw_grid[["diagram"]], band = 10000 * cc)
+```
+
+```{r}
+## confidence set for the Kernel Density Diagram
+
+# input data
+n <- 400
+XX <- circleUnif(n)
+
+## Ranges of the grid
+Xlim <- c(-1.8, 1.8)
+Ylim <- c(-1.6, 1.6)
+lim <- cbind(Xlim, Ylim)
+by <- 0.05
+
+h <- .3  #bandwidth for the function kde
+
+#Kernel Density Diagram of the superlevel sets
+Diag <- gridDiag(XX, kde, lim = lim, by = by, sublevel = FALSE,
+                 printProgress = TRUE, h = h) 
+
+# confidence set
+B <- 10       ## the number of bootstrap iterations should be higher!
+              ## this is just an example
+alpha <- 0.05
+
+cc <- bootstrapDiagram(XX, kde, lim = lim, by = by, sublevel = FALSE, B = B,
+          alpha = alpha, dimension = 1, printProgress = TRUE, h = h)
+
+plot(Diag[["diagram"]], band = 2 * cc)
+```
+
+```{r level_set_persistance}
+# Start with the FRED stress data:
+fread(file = file.choose(),  # Downloads/STLFSI2.txt
+      skip = 10,
+      header = TRUE) -> fed1
+
 ```
 

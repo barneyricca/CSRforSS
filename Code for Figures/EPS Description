@@ -1,0 +1,13 @@
+This folder contains code to produce figures for the text. You may notice that all of the plots look like they do in the Code Snippets except that a command like this:
+
+postscript(file = "Figure 4.14.eps",
+           title = "Figure 4.14",
+           colormodel = "cmyk")
+
+has been added before the plotting and the command:
+
+dev.off()
+
+has been added after the plotting.
+
+For graphs and the like, encapsulated postscript is probably the best high resolution graphics format, so we use that. Because the files will be printed rather than shown on a screen, "cmyk" (rather than "rgb") is the appropriate colormodel.

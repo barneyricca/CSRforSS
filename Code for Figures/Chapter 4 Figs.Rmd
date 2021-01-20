@@ -1,0 +1,288 @@
+---
+title: "Chapter 4"
+author: "BPR"
+date: "6/16/2020"
+output: word_document
+---
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+{         # Put the cursor on this line, and run it; because
+          #  of the curly braces, all the code within
+          #  the braces will be run.
+  c("data.table",   # fread() for FAST and flexible data input
+    "here") ->      # For portability
+  package_names
+
+  for (package_name in package_names) {
+    if (!is.element(package_name, installed.packages()[, 1])) {
+      install.packages(package_name)
+    }
+    library(package_name,
+            character.only = TRUE,
+            quietly = TRUE,
+            verbose = FALSE
+    )
+  }
+  rm(list = c("package_names", "package_name"))
+}
+```
+
+
+Code Snippet 4.2 and Figure 4.9
+```{r CS4.2_F4.9}
+1:10 -> x     # Put some data (the integers 1 to 10) into variable x.
+x^2 -> y      # Put the square of x into y.
+postscript(file = "Figure 4.9.eps",
+           title = "Figure 4.9",
+           colormodel = "cmyk")
+plot(x,y)     # Make a graph of y versus x.
+dev.off()
+```
+
+Code Snippet 4.3 and Figure 4.10. A "better" plot.
+```{r F4.10}
+1:10 -> x                        # Put some data into variable x
+x^2 -> y                         # Put the square of x into y
+postscript(file = "Figure 4.10.eps",
+           title = "Figure 4.10",
+           colormodel = "cmyk")
+plot(x, y,
+     main = "Dummy Data",        # Change the title above the plot
+     sub = "More advanced plot", # Subtitle
+     xlab = "X",                 # set the x-axis label
+     ylab = "Y",                 # set the y-axis label
+     cex.lab = 1.5,              # make the labels 50% bigger
+     xlim = c(0,16),             # set the x-axis range 
+     ylim = c(0,50),             # set the y-axis range
+     pch = 16,                   # Use a solid dot, not an open circle
+     cex = 0.8)                  # make the dots 80% of normal size
+dev.off()
+```
+
+Figure 4.11
+```{r F4.11}
+rnorm(n = 1000,         # Draw 1000 times from a normal distribution
+      mean = 0,         #  with a mean of zero
+      sd = 1) ->        #  and a standard deviation of 1
+  dummy                 #   and assign it to variable dummy
+postscript(file = "Figure 4.11.eps",
+           title = "Figure 4.11",
+           colormodel = "cmyk")
+
+hist(dummy,             # Make a histogram of variable dummy
+     breaks = 50,       #  using 50 bins
+     main = "Normal distribution histogram")
+dev.off()
+```
+
+
+Figure 4.12
+```{r F4.12}
+1:15 ->                        # Put the integers 1:15 into
+  ind_var                      #  the independent variable
+                   
+3 * ind_var + 4 -> dep_var      # Use a linear relationship to create the
+                                #  dependent variable
+postscript(file = "Figure 4.12a.eps",
+           title = "Figure 4.12a",
+           colormodel = "cmyk")
+
+plot(ind_var, dep_var,          # Make a scatterplot
+     main = "Noiseless data")   #  with a title.
+dev.off()
+
+set.seed(seed = 42)             # Look at the "Sampling" section in Chapter 4.
+runif(n = 15,                   # Get 15 random numbers
+      min = -5,                 #  from -5
+      max = 5) +                #  to 5
+  dep_var ->                    #  add them to the original
+  dep_var                       #  and store the results back in
+                                #  the original dependent variable.
+postscript(file = "Figure 4.12b.eps",
+           title = "Figure 4.12b",
+           colormodel = "cmyk")
+plot(ind_var, dep_var,          # Make a scatterplot
+     main = "Noisy data",       #  with a title and subtitle:
+     sub = "Compare to Figure 4.12(a)")
+dev.off()
+```
+
+Figure 4.13
+```{r F4.13}
+1:15 ->                             # Put the integers 1:15 into
+  ind_var                           #  the independent variable
+                   
+3 * ind_var + 4 -> dep_var          # Use a linear relationship to create
+                                    #  the dependent variable
+set.seed(seed = 42)                 # Look at the "Sampling" section in 
+                                    #  Chapter 4.
+runif(n = 15,                       # Get 15 random numbers
+      min = -5,                     #  from -5
+      max = 5) +                    #  to 5
+  dep_var ->                        #  add them to the original
+  dep_var                           #  and store the results back in
+                                    #  the original dependent variable.
+lm(dep_var ~ ind_var) ->            # Regress dependent variable on the
+                                    #  independent variable
+  y_lm                              #  and store the results in y_lm
+
+postscript(file = "Figure 4.13.eps",
+           title = "Figure 4.13",
+           colormodel = "cmyk")
+{                                   # Put the scatterplot, line & text
+                                    #  all on the same plot
+  plot(ind_var, dep_var,            # Plot the data
+       main = "Dummy Data",         # Change the title above the plot
+       xlab = "Independent",        # set the x-axis label
+       ylab = "Dependent",          # set the y-axis label
+       xlim = c(0,16),              # set the x-axis range 
+       ylim = c(0,50),              # set the y-axis range
+       pch = 16,                    # Use a solid dot, not an open circle
+       cex = 0.8)                   # make the dots 80% normal size
+  abline(a = y_lm$coef[1],          # Add a line to the plot, with
+                                    #  intercept from the linear model,
+         b = y_lm$coef[2],          #  slope from the linear model,
+         col = "darkgreen",         #  using a dark green color,
+         lwd = 2)                   #  and a wider line.
+  text(1, 40,                       # Put some text info on the plot @ (1,40)
+       labels = paste(              # The label will have, pasted together,
+         "slope =",                 #  "slope ="
+         round(y_lm$coef[2],        #  and the value of the slope from the
+                                    #  regression,
+               digits = 2)),        #  rounded to 2 decimal places.
+       adj = c(0,0),                # Lower left point at (1,40) on graph
+       cex = 1.2)                   # 20% bigger text
+  text(1, 35,                       # Put some more text on the plot
+       labels = paste(              # Paste together
+         "intercept = ",            #  "intercept = "
+         round(y_lm$coef[1],        #  the value of the intercept from the
+                                    #  regression
+               digits = 2)),        #  rounded to two decimal places.
+       adj = c(0,0),
+       cex = 1.2)                   # 20% bigger text
+}
+dev.off()
+```
+
+Figure 4.14
+```{r F4.14}
+1:15 ->                             # Put the integers 1:15 into
+  ind_var                           #  the independent variable
+                   
+3 * ind_var + 4 -> dep_var          # Use a linear relationship to create
+                                    #  the dependent variable
+set.seed(seed = 42)                 # Look at the "Sampling" section in 
+                                    #  Chapter 4.
+runif(n = 15,                       # Get 15 random numbers
+      min = -5,                     #  from -5
+      max = 5) +                    #  to 5
+  dep_var ->                        #  add them to the original
+  dep_var                           #  and store the results back in
+                                    #  the original dependent variable.
+
+lm(dep_var ~ ind_var) ->            # Regress dependent variable on the
+                                    #  independent variable
+  y_lm                              #  and store the results in y_lm
+
+postscript(file = "Figure 4.14.eps",
+           title = "Figure 4.14",
+           colormodel = "cmyk")
+plot(y_lm,                          # Plot the results of the linear model.
+                                    # Notice that the plot() command is
+                                    #  pretty smart. It detects that y_lm
+                                    #  is a linear model and plots
+                                    #  appropriately!
+     which = 1)                     # There are four plots; use the first.
+                                    # Type ?plot.lm at the command prompt
+                                    #  in the console, and press <Enter>
+                                    #  to see what the others are.
+dev.off()
+```
+
+Figures 4.15 and 4.16
+```{r F4.15_F4.16}
+set.seed(seed = 413)
+runif(n = 1e5,          # Draw 100,000 samples uniformly
+      min = -3,         # between -3...
+      max = 3) ->       # ...and 3. Store the results...
+  unif1                 # ...in variable unif1.
+
+postscript(file = "Figure 4.15a.eps",
+           title = "Figure 4.15a",
+           colormodel = "cmyk")
+
+hist(unif1,             # Make a histogram of the data in variable unif1.
+     breaks = 50,       # Divide the data into 50 bins
+     xlim = c(-3, 15),  # Draw graph from x = -3 to x = 15. (See next example.)
+     main = "Uniform Distribution [-3,3]")  # Put a title on the graph
+dev.off()
+
+runif(n = 1e5,
+      min = 3,
+      max = 15) -> # Use a different maximum value
+  unif2
+postscript(file = "Figure 4.15b.eps",
+           title = "Figure 4.15b",
+           colormodel = "cmyk")
+hist(unif2,
+     breaks = 50,
+     main = "Uniform Distribution [3,15]")
+dev.off()
+
+rnorm(n = 1e5,           # Draw 100,000 samples from a normal distribution...
+      mean = 0,          # ...with a mean of 0...
+      sd = 3) ->         # ...and standard deviation of 3. Store the results...
+  norm1                  # ...in variable norm1.
+postscript(file = "Figure 4.16a.eps",
+           title = "Figure 4.16a",
+           colormodel = "cmyk")
+
+hist(norm1,              # Make a histogram.
+     breaks = 50,        #  
+     main = expression(  # "expression" allows for math and Greek characters.
+       paste(            # "paste" all this stuff together:
+         "Normal Distribution: ",  # String
+         mu,                       # Greek letter mu (because of expression)
+         " = 0, ",                 # Another string
+         sigma,                    # Greek letter sigma
+         " = 1 ")),                # Another string
+     xlim = c(-10, 20))            # Set the limits (see the next two)
+dev.off()
+
+rnorm(n = 1e5,
+      mean = 4,
+      sd = 3) -> 
+  norm2
+postscript(file = "Figure 4.16b.eps",
+           title = "Figure 4.16b",
+           colormodel = "cmyk")
+
+hist(norm2,
+     breaks = 50,
+     main = expression(paste("Normal Distribution: ",
+                  mu,
+                  " = 4, ",
+                  sigma,
+                  " = 3 ")),
+     xlim = c(-10, 20))
+dev.off()
+
+rnorm(n = 1e5,
+      mean = 4,
+      sd = 1) -> 
+  norm3
+postscript(file = "Figure 4.16c.eps",
+           title = "Figure 4.16c",
+           colormodel = "cmyk")
+
+hist(norm3,
+     breaks = 50,
+     main = expression(paste("Normal Distribution: ",
+                  mu,
+                  " = 4, ",
+                  sigma,
+                  " = 1 ")),
+     xlim = c(-10, 20))
+dev.off()
+```
+

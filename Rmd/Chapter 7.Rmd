@@ -1,0 +1,623 @@
+---
+title: "Chapter 7"
+author: "BPR"
+date: "8/23/2020"
+output: word_document
+---
+Need to use qgraph to plot the adjacency matrices?
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+{         # Put the cursor on this line, and run it; because
+          #  of the curly braces, all the code within
+          #  the braces will be run.
+  c("data.table",   # fread() for FAST and flexible data input
+    "dplyr",        # Data wrangling
+    "dtplyr",       # For faster data wrangling with tidyverse structure
+    "forecast",     # ARIMA modeling
+#    "goftest",      # CVM test
+    "here",         # To assist with folder structure
+    "knitr",        # Better table printing
+#    "MASS",         # For fitting distributions
+# Something is wrong with nonlinearAnalysis & this
+#  version of R. Hence, use the six tests individually.
+#    "nonlinearAnalysis",
+#    "poweRlaw") ->  # To fit power law data; MASS::fitdistr() can't
+    "pracma",
+    "qgraph",       # Plot transition networks.
+    "tseriesChaos") ->
+  package_names
+
+  for (package_name in package_names) {
+    if (!is.element(package_name, installed.packages()[, 1])) {
+      install.packages(package_name)
+    }
+    library(package_name,
+            character.only = TRUE,
+            quietly = TRUE,
+            verbose = FALSE
+    )
+  }
+  rm(list = c("package_names", "package_name"))
+}
+
+# Reprodcibility
+set_here()      # This helps with folder structure when shifting computers
+
+# Usually, seeds for random number generation would be set here. They are, for
+#  pedagogical reasons, set with each snippet of code.
+
+# Stuff I prefer
+options(show.signif.stars = FALSE) # Do not show significance stars! Showing
+                                   #  significance stars encourages the
+                                   #  conflation of significant and effect
+                                   #  size.
+options(digits = 5)                # Round to 5 digits
+```
+
+# Because something is going on the package::nonlinearAnalysis, the 6 tests of nonlinearityTests are available through these packages:
+```{r setupExtra}
+{         # Put the cursor on this line, and run it; because
+          #  of the curly braces, all the code within
+          #  the braces will be run.
+  c("tseries",
+    "TSA") ->
+  package_names
+
+  for (package_name in package_names) {
+    if (!is.element(package_name, installed.packages()[, 1])) {
+      install.packages(package_name)
+    }
+    library(package_name,
+            character.only = TRUE,
+            quietly = TRUE,
+            verbose = FALSE
+    )
+  }
+  rm(list = c("package_names", "package_name"))
+}
+```
+
+
+```{r F7.1}
+0:30 -> year
+0.03 -> rate
+1000 -> initial
+initial * (1 + rate) ^ year -> population
+plot(year, population,
+     pch = 16,
+     cex = 0.8,
+     main = "Population Growth Example",
+     xlab = "Time elapsed",
+     ylab = "Population")
+```
+
+
+```{r F7.2a}
+0:30 -> year
+2.65 -> R
+
+vector(mode = "numeric",
+       length = 21) -> population
+0.5 -> population[1]
+
+for(generation in 1:(length(year)-1)) {
+  R * population[generation] * (1 - population[generation]) ->
+    population[generation + 1]
+}
+plot(year, population,
+     pch = 16,
+     cex = 0.8,
+     main = "Population (with carrying capacity)",
+     xlab = "Generation",
+     ylab = "Fraction of /nCarrying Capacity",
+     text(20, 0.6,
+          paste("R =", R)))
+
+```
+
+
+```{r F7.2b}
+0:30 -> year
+3.513 -> R
+
+vector(mode = "numeric",
+       length = 21) -> population
+0.5 -> population[1]
+
+for(generation in 1:(length(year)-1)) {
+  R * population[generation] * (1 - population[generation]) ->
+    population[generation + 1]
+}
+plot(year, population,
+     pch = 16,
+     cex = 0.8,
+     main = "Population (with carrying capacity)",
+     xlab = "Generation",
+     ylab = "Fraction of /nCarrying Capacity",
+     text(20, 0.6,
+          paste("R =", R)))
+
+```
+
+
+Figure 7.3(a) and 7.3(b)
+ 
+
+```{r CS7.1}
+0:30 -> year
+0.03 -> rate
+1000 -> initial
+initial * (1 + rate) ^ year -> amount
+
+auto.arima(ts(amount)) -> amount_arima
+plot(forecast(amount_arima),       # Figure 7.3(a)
+     main = "Compound Interest Forecast",
+     xlab = "Year after deposit",
+     ylab = "Amount in Account")
+
+data("AirPassengers")
+auto.arima(AirPassengers) -> air_arima
+plot(forecast(air_arima),         # Figure 7.3(b)
+     main = "Air Passengers",
+     xlab = "Year",
+     ylab = "Thousands of Passengers")
+
+```
+
+Nonlinearity test on cosine and the Lorenz.
+```{r CS7.2}
+# A cosine function
+print("Terasvirta's neural network test")
+print("Null Hypothesis: Mean is linear")
+terasvirta.test(
+  x=ts(cos(seq(0, 8*pi, pi/100))),  #  A cosine function
+  type="Chisq")
+print("White's neural network test")
+print("Null Hypothesis: Mean is linear")
+white.test(ts(cos(seq(0, 8*pi, pi/100))))
+print("Keenan's test for nonlinearity")
+print("Null Hypothesis: AR process")
+Keenan.test(ts(cos(seq(0, 8*pi, pi/100))))$p.value
+print("McLeod-Li test")
+print("Null Hypothesis: ARIMA")
+max(unlist(McLeod.Li.test(y = ts(cos(seq(0, 8*pi, pi/100))),
+               plot = FALSE)))
+print("Tsay test")
+print("Null hypothesis: AR")
+Tsay.test(ts(cos(seq(0, 8*pi, pi/100))))$p.value
+print("Likelihood ratio test")
+print("Null Hypothesis: AR")
+print("Alternate Hypothesis: TAR process")
+tlrt(ts(cos(seq(0, 8*pi, pi/100))))$p.value
+
+# The magnitude of the Lorenz model
+print("Terasvirta's neural network test")
+print("Null Hypothesis: Mean is linear")
+terasvirta.test(
+  x=lorenz.ts,
+  type="Chisq")
+print("White's neural network test")
+print("Null Hypothesis: Mean is linear")
+white.test(lorenz.ts)
+print("Keenan's test for nonlinearity")
+print("Null Hypothesis: AR process")
+Keenan.test(lorenz.ts)$p.value
+print("McLeod-Li test")
+print("Null Hypothesis: ARIMA")
+max(unlist(McLeod.Li.test(y = lorenz.ts,
+               plot = FALSE)))
+print("Tsay test")
+print("Null hypothesis: AR")
+Tsay.test(lorenz.ts)$p.value
+print("Likelihood ratio test")
+print("Null Hypothesis: AR")
+print("Alternate Hypothesis: TAR process")
+tlrt(lorenz.ts)
+
+```
+
+
+
+```{r}
+seq(from = 0,
+    to = 8*pi,
+    by = 0.01) -> theta
+plot(theta, 1.5*cos(theta),
+     type = 'l',
+     xlab = "Time",
+     ylab = "Position")
+```
+
+
+```{r ellipse}
+# Fictitious data; this works for the figure
+seq(from = 0,
+    to = 2*pi,
+    by = 0.01) -> theta
+{
+  plot(1.5* cos(theta), sin(theta),
+       type = 'l',
+       xlab = "Position",
+       ylab = "Velocity")
+  abline(v = 0)
+  abline(h = 0)
+  arrows(1.5/sqrt(2), 1/sqrt(2),
+         1.5*cos(pi/4+0.01), sin(pi/4 + 0.01))
+}
+
+
+```
+
+
+```{r F7.5}
+# No header is given, so the default is "V1"; use that column.
+fread("http://citadel.sjfc.edu/faculty/bricca/SCIPIE2019/logistic.txt",
+  data.table = FALSE)$V1 -> logistic_series
+plot(x = 1:(length(logistic_series)),
+     y = logistic_series,
+     xlab = "n",
+     ylab = expression('x'[n]),
+     xlim = c(500,700),  # Just look at part of it
+     pch = 16,           # Use dots
+     cex = 0.5)          # Use smaller dots
+```
+
+
+```{r F7.6}
+seq(from = 0,
+    to = 1,
+    by = 0.1) -> n
+seq(from = 0,
+    to = 1,
+    by = 0.1) -> np1
+plot(n, np1,
+     type = 'n',
+     xlab = expression('x'[n]),   # [] puts a subscript in the label
+     ylab = expression('x'[n+1]))
+
+
+```
+
+
+Figure 7.8
+```{r CS7.3}
+# No header is given, so the default is "V1"; use that column.
+fread("http://citadel.sjfc.edu/faculty/bricca/SCIPIE2019/logistic.txt",
+  data.table = FALSE)$V1 -> logistic_series
+shift(logistic_series,
+    1) -> xnp1   # "x n plus 1"
+plot(xnp1, logistic_series,
+     xlab = expression('x'[n]),   # [] puts in a subscript
+     ylab = expression('x'[n+1]),
+     pch = 16,
+     cex = 0.5)
+
+
+length(logistic_series) -> n
+logistic_series[1:n-1] -> xn
+logistic_series[2:n] -> xnp1
+polyfit(xn, xnp1, 2) -> logistic_poly   # Fit a 2nd order polynomial
+
+#{
+#  plot(xn, xnp1,
+#       col = "green",
+#       xlab = expression('x'[n]),   # [] puts in a subscript
+#       ylab = expression('x'[n+1]))
+#  points(xn, 
+#         logistic_poly[1]*xn*xn + logistic_poly[2]*xn + logistic_poly[3],
+#     pch = 21,
+#     cex = 0.4,
+#     col = "blue")
+#}
+
+round(logistic_poly,5)
+
+```
+
+# Embed Lorenz
+use of the mutual() and false.nearest() functions to determine the lag and the embedding dimension. Need a better example.
+```{r CS7.4}
+# Data?
+# AMI and where there is a minimum. (Maybe use RJB or WBT data?)
+mutual(lorenz.ts,       # works well. Do with and without plot.
+       plot = FALSE) -> lorenz.ami
+which.min(lorenz.ami)
+
+false.nearest(lorenz.ts,
+              m = 5,
+              d = which.min(lorenz.ami),
+              t = 100) -> fnn
+which.min(fnn[1,]/fnn[2,])
+```
+Not surprisingly, this is a 1-dimensional embedding. (Try with the original Lorenz; do we get 3?)
+
+
+Hmm, walking is also a 1-d thing...not surprising, as the delay isn't the important thing.
+
+Figures 7.8 - 7.9
+```{r CS7.5}
+fread(file = "/Users/barneyricca/Dropbox/Dynamic analysis of gait and kicking/Data/Beginning Walk Full Term.csv",
+      header = TRUE) -> walk1_df
+
+
+# Figure 7.8(a) - 7.8(c)
+plot(walk1_df$Time, walk1_df$ankleAngle,
+     type = 'l')
+plot(walk1_df$Time, walk1_df$kneeAngle,
+     type = 'l')
+plot(walk1_df$Time, walk1_df$hipFlex,
+     type = 'l')
+
+plot(walk1_df$ankleAngle[1:400], walk1_df$kneeAngle[1:400],
+     type = 'l')
+
+
+# OK, can do some DTW on these things.
+# dtw(walk1_df$ankleAngle, walk3_df$ankleAngle) -> dtw1
+
+```
+
+
+```{r F7.12}
+
+```
+
+
+
+```{r F7.13}
+fread("http://citadel.sjfc.edu/faculty/bricca/SCIPIE2019/logistic.txt",
+  data.table = FALSE)$V1 -> logistic_series
+shift(logistic_series[1:30],
+    1) -> xnp1   # "x n plus 1"
+logistic_series[1:30] -> xn
+plot(xnp1, xn,
+     xlab = expression('x'[n]),   # [] puts in a subscript
+     ylab = expression('x'[n+1]),
+     type = 'l')
+```
+
+
+```{r F7.15}
+walk <- function(secs) {
+  runif(secs/2,
+        min = 140,
+        max = 180) -> an
+  sin(pi*an/180) * sample(c(-1,1),
+                          secs/2,
+                          replace = TRUE) -> ve
+  data.frame("Knee angle" = an,
+             "Knee velocity" = ve) -> w_df
+  return(w_df)
+}
+
+climb <- function(secs) {
+  runif(secs/2,
+        min = 130,
+        max = 180) -> an
+  1.2 * sin(pi*an/180) * sample(c(-1,1),
+                                secs/2,
+                                replace = TRUE) -> ve
+  data.frame("Knee angle" = an,
+             "Knee velocity" = ve) -> c_df
+  return(c_df)
+}
+
+sit <- function(secs) {
+  runif(secs/2,
+        min = 89,
+        max = 91) -> an
+  runif(secs/2,
+        min = -0.04,
+        max = 0.04) -> ve
+  data.frame("Knee angle" = an,
+             "Knee velocity" = ve) -> si_df
+  return(si_df)
+}
+
+stand <- function(secs) {
+  runif(secs/2,
+        min = 179,
+        max = 180) -> an
+  runif(secs/2,
+        min = -0.04,
+        max = 0.04) -> ve
+  data.frame("Knee angle" = an,
+             "Knee velocity" = ve) -> st_df
+  return(st_df)
+}
+
+set.seed(715)
+walk(1200) -> morn_df
+rbind(morn_df, climb(120)) -> morn_df
+rbind(morn_df, walk(1080)) -> morn_df
+rbind(morn_df, sit(1200)) -> morn_df
+rbind(morn_df, walk(10)) -> morn_df
+rbind(morn_df, stand(240)) -> morn_df
+rbind(morn_df, walk(10)) -> morn_df
+rbind(morn_df, sit(3600)) -> morn_df
+rbind(morn_df, walk(6)) -> morn_df
+rbind(morn_df, stand(10)) -> morn_df
+rbind(morn_df, walk(6)) -> morn_df
+rbind(morn_df, sit(3600)) -> morn_df
+rbind(morn_df, walk(6)) -> morn_df
+rbind(morn_df, stand(10)) -> morn_df
+rbind(morn_df, walk(6)) -> morn_df
+rbind(morn_df, sit(3300)) -> morn_df
+
+{
+plot(morn_df$Knee.angle, morn_df$Knee.velocity,
+     pch = 16,
+     cex = 0.4)
+lines(morn_df$Knee.angle, morn_df$Knee.velocity,
+      lwd = 0.5)
+}
+
+
+{
+plot(morn_df$Knee.angle, morn_df$Knee.velocity,
+     pch = 16,
+     cex = 0.4,
+     xlim = c(88, 92),
+     ylim = c(-0.05, 0.05))
+lines(morn_df$Knee.angle, morn_df$Knee.velocity,
+      lwd = 0.5)
+}
+
+{
+plot(morn_df$Knee.angle, morn_df$Knee.velocity,
+     pch = 16,
+     cex = 0.4,
+     xlim = c(175, 180),
+     ylim = c(-0.05, 0.05))
+lines(morn_df$Knee.angle, morn_df$Knee.velocity,
+      lwd = 0.5)
+}
+
+```
+
+
+```{r CS7.6}
+matrix(c(0.9, 0.2, 0.1, 0.8),
+       ncol = 2,
+       nrow = 2,
+       byrow = TRUE) -> pop_mat
+
+eigen(pop_mat)$vectors[,1] -> pop_ss
+# The first eigenvector is used because, well, that’s the one we want. If you want to know why, I refer you to a good linear algebra book.
+
+# Normalize the vector so that the total percentage of people is equal to 1.
+pop_ss / sum(pop_ss)
+
+c(10000, 50000) ->initial_pops
+pop_mat %*% initial_pops -> 
+  pops                       # Initial populations
+pop_mat %*% pops -> pops     # Year 2
+pop_mat %*% pops -> pops     # Year 3
+pop_mat %*% pops -> pops     # Year 4
+pop_mat %*% pops -> pops     # Year 5
+pop_mat %*% pops -> pops     # Year 6
+pop_mat %*% pops -> pops     # Year 7
+pop_mat %*% pops -> pops     # Year 8
+pop_mat %*% pops -> pops     # Year 9
+pop_mat %*% pops -> pops     # Year 10
+pop_mat %*% pops -> pops     # Year 11
+pop_mat %*% pops -> pops     # Year 12
+pop_mat %*% pops -> pops     # Year 13
+pop_mat %*% pops -> pops     # Year 14
+pop_mat %*% pops -> pops     # Year 15
+pop_mat %*% pops -> pops     # Year 16
+pop_mat %*% pops -> pops     # Year 17
+pop_mat %*% pops -> pops     # Year 18
+pop_mat %*% pops -> pops     # Year 19
+pop_mat %*% pops -> pops     # Year 20
+pops
+
+
+```
+
+
+
+```{r CS7.7}
+unique(data_series) -> code_names           # Get the code names
+length(data_series) -> n
+
+# Now, make a transition matrix. The next command saves time:
+matrix(0,
+       nrow = length(code_names),
+       ncol = length(code_names),
+       dimnames = list(code_names, code_names)) -> # Name the rows & columns
+  adj_mat
+
+# Count the number of times one code is followed by another:
+for(i in 1:(n-1)) {
+  adj_mat[data_series[i], data_series[i+1]] + 1 -> 
+    adj_mat[data_series[i], data_series[i+1]]
+}
+adj_mat                                   # Look at the result
+
+# Make the matrix of transition probabilities (a.k.a., Markov matrix) from
+#  the matrix of transition frequencies:
+adj_mat/colSums(adj_mat) -> mark_mat
+mark_mat                                  # Look at the results
+
+```
+
+```{r CS7.10}
+# function trans_likely() for significance of transitions
+```
+
+
+
+embedd() function.
+
+
+Markov:
+```{r}
+T = matrix(data=c(1/6, 1/3, 1/3, 1/6, 1/5, 1/5, 2/5, 1/5,
+                  1/7, 1/7, 2/7, 3/7, 1/4, 1/8, 1/4, 3/8), nrow=4, ncol=4, byrow=TRUE)
+N = 4000
+chain = vector(mode="numeric", length=N)
+chain[1] = sample(1:4, size=1)
+for(i in 2:2000) {
+  chain[i] = sample(1:4, 1, prob=T[chain[i-1],])
+}
+
+T2 = matrix(data=rep(0, times=16), nrow=4, ncol=4)
+for(i in 1:(N-1)) {
+  T2[chain[i], chain[i+1]] = T2[chain[i], chain[i+1]] + 1
+}
+
+
+T2 = T2 / rowSums(T2)
+# Old version
+#r_tot = rowSums(T2)
+#for(i in 1:4) {
+#  T2[i,] = T2[i,]/r_tot[i]
+#}
+T
+T2
+```
+
+
+
+Appendix:
+```{r}
+# Modified from:
+# https://desolve.r-forge.r-project.org/slides/tutorial.pdf
+#install.packages("deSolve")
+library(deSolve)
+
+# Can we do mixed equations a la van Geert?
+eqns <- function(t, y, parms) {
+  -2 * y[2] * y[3] -> dy1
+  -1.25 * dy1 * y[3] -> dy2
+  -0.5 * y[1] * y[2] -> dy3
+  return(list(c(dy1, dy2, dy3)))
+}
+# It appears so.
+
+c(y1 = 1, y2 = 0.1, y3 = 0.9) -> yini
+seq(0, 20, 0.01) -> times
+ode(times = times,
+    y = yini,
+    func = eqns,
+    parms = NULL) -> output_ode
+
+head(output_ode, n = 3)
+
+plot(output_ode)
+
+#install.packages("scatterplot3d")
+library(scatterplot3d)
+
+par(mar = c(0,0,0,0))
+scatterplot3d(output_ode[,-1],
+              xlab = "",
+              ylab = "",
+              zlab = "",
+              label.tick.marks = FALSE)
+
+```
+
+

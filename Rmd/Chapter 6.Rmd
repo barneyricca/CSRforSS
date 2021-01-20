@@ -1,5 +1,5 @@
 ---
-title: "Chapter 3"
+title: "Chapter 6"
 author: "BPR"
 date: "6/3/2020"
 output: word_document
@@ -11,17 +11,20 @@ knitr::opts_chunk$set(echo = TRUE)
           #  of the curly braces, all the code within
           #  the braces will be run.
   c("data.table",   # fread() for FAST and flexible data input
-    "dplyr",        # Data wrangling
-    "dtplyr",       # For faster data wrangling with tidyverse structure
-    "gridExtra",    # For better table printing
-    "here",         # To assist with folder structure
+    "dgof",
+#    "dplyr",        # Data wrangling
+#    "dtplyr",       # For faster data wrangling with tidyverse structure
+    "goftest",      # CVM test
+#    "gridExtra",    # For better table printing
+#    "here",         # To assist with folder structure
+    "knitr",        # Better table printing
     "MASS",         # For fitting distributions
     "poweRlaw") ->  # To fit power law data; MASS::fitdistr() can't
   package_names
 
   for (package_name in package_names) {
     if (!is.element(package_name, installed.packages()[, 1])) {
-      install.packages(package_name, repos = "http://lib.stat.cmu.edu/R/CRAN")
+      install.packages(package_name)
     }
     library(package_name,
             character.only = TRUE,
@@ -33,7 +36,7 @@ knitr::opts_chunk$set(echo = TRUE)
 }
 
 # Reprodcibility
-set_here()      # This helps with folder structure when shifting computers
+#set_here()      # This helps with folder structure when shifting computers
 
 # Usually, seeds for random number generation would be set here. They are, for
 #  pedagogical reasons, set with each snippet of code.
@@ -43,15 +46,165 @@ options(show.signif.stars = FALSE) # Do not show significance stars! Showing
                                    #  significance stars encourages the
                                    #  conflation of significant and effect
                                    #  size.
-options(digits = 5)                # Round to 5 digits
+options(digits = 3)                # Round to 3 digits
+```
+
+Code Snippet 6.2: Demonstrating goodness of fit tests
+```{r CS6.2}
+set.seed(62)
+1e3 -> R
+6 -> N
+sample(1:N,
+       R,
+       replace = TRUE) -> die_rolls
+
+matrix(c(unname(table(die_rolls)),
+         rep(R/10,N)),
+       nrow = 2,
+       ncol = N,
+       byrow = TRUE) -> cont_tbl
+
+stats::ks.test(die_rolls,
+               rep(1e5,6))
+goftest::cvm.test(die_rolls,
+               punif)
+dgof::cvm.test(die_rolls,
+               ecdf(1:6))
+fisher.test(cont_tbl)
+chisq.test(cont_tbl)
+
+```
+
+Code Snippet 6.4
+```{r CS6.4}
+set.seed(64)
+1e3 -> R
+replicate(R,
+          sum(sample(0:1, 
+                     10, 
+                     replace = TRUE))) -> coin_flips
+{
+  hist(coin_flips,
+       main = "10 coin flip results",
+       xlab = "Number of heads",
+       ylab = "Probability",
+       breaks = seq(from = -0.5,
+                    to = 10.5,
+                    by = 1),
+       probability = TRUE)
+  lines(0:10, dnorm(0:10,
+                    mean(coin_flips),
+                    sd(coin_flips)),
+        col = "blue")
+}
+
+unname(table(coin_flips)) / R -> coin_tbl
+dbinom(0:10,
+       10,
+       c(0.5, 0.5)) -> binom_probs
+round(binom_probs * R) -> binom_tbl
+fisher.test(coin_tbl, binom_tbl)
+
+round(dnorm(0:10,
+            mean(coin_flips),
+            sd(coin_flips)) * R) -> norm_tbl
+fisher.test(coin_tbl, norm_tbl)
+ks.test(coin_tbl, "pnorm", mean(coin_flips), sd(coin_flips))
+
+
+1e4 -> R
+replicate(R,
+          sum(sample(0:1, 
+                     1e4, 
+                     replace = TRUE))) -> coin_flips
+unname(table(coin_flips)) / R -> coin_tbl
+round(dnorm(0:1000,
+            mean(coin_flips),
+            sd(coin_flips)) * R) -> norm_tbl
+ks.test(coin_tbl, "pnorm", mean(coin_flips), sd(coin_flips))
+ks.test(coin_tbl, norm_tbl)
+```
+
+Table 6.2, etc.
+```{r T6.2}
+# Put all the outcomes from Table 6.1 into a variable
+c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
+  10, 10, 10, 11, 11, 12) -> dice_rolls
+ks.test(two_dice_results,  # Perform a Komogorov-Smirnov test,
+        dice_rolls)        #  comparing the simulated results 
+## Warning in ks.test(two_dice_results, dice_rolls): p-value will be approximate in
+## the presence of ties
+## 
+##  Two-sample Kolmogorov-Smirnov test
+## 
+## data:  two_dice_results and dice_rolls
+## D = 0.000231, p-value = 1
+## alternative hypothesis: two-sided
+                           #  to the frequencies in Table 6.1
+
+# Try a chi-squared approach; Fisher's exact test would be better,
+#  but the numbers in the first row of dice_mat are too large. We simulate 
+#  the p-value because the numbers in the second row of dice_mat are small.
+table(two_dice_results) -> dice_freq
+table(dice_rolls) -> rolls_freq
+rbind(dice_freq, rolls_freq) -> dice_mat
+chisq.test(dice_mat,
+           simulate.p.value = TRUE)
+## 
+##  Pearson's Chi-squared test with simulated p-value (based on 2000
+##  replicates)
+## 
+## data:  dice_mat
+## X-squared = 0.000112, df = NA, p-value = 1
+set.seed(62)
+1e6 -> R   # 1e8 replications take about 8000 seconds on my computer.
+           # 1e6 replications take about 8 seconds.
+replicate(R,
+          sum(sample(1:6, 2, replace = TRUE))) -> two_dice_results
+
+# Put all the totals from Table 6.1 into 
+c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
+  7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
+  10, 10, 10, 11, 11, 12) -> dice_rolls
+
+as.vector(unname(table(dice_rolls))) / 36 -> dice_probs
+as.vector(unname(table(two_dice_results))) / R -> sim_dice_probs
+
+data.frame("Dice Total" = 2:12,
+           "Probability" = round(dice_probs, digits = 4),
+           "Simulated Probability" = round(sim_dice_probs, 
+                                           digits = 4)) -> 
+  dice_prob_df
+
+# I use package:knitr; package:lemon_print is another option
+# When package:gridExtra knits, it produces a figure rather than 
+#  a table, though!
+
+library(knitr)
+## Warning: package 'knitr' was built under R version 4.0.2
+library(lemon)
+## Warning: package 'lemon' was built under R version 4.0.2
+lemon_print -> knit_print.data.frame
+
+kable(x = dice_prob_df,
+      format = 'simple',
+      caption = "Figure 6.x",
+      digits = 4,
+      row.names = FALSE,
+      colnames = c("2 Dice Total",
+                     "Probability",
+                     "Simulated Probability"),
+      align = 'c')
+
 ```
 
 
 
-
-```{r F3.x}
+```{r F3.x, eval=FALSE}
 # Simulate the Lorenz system
 
+library("tseriesChaos")
 sim.cont(syst = lorenz.syst,
          start.time = 0,
          end.time = 8000,
@@ -69,7 +222,7 @@ unname(temp_ts[which(names(temp_ts) == "3")]) -> z_ts
 
 # library(plot3D)
 50 -> n
-lines3D(x_ts[1:n], y_ts[1:n], z_ts[1:n])
+#lines3D(x_ts[1:n], y_ts[1:n], z_ts[1:n])
 
 # Figure 3.1
 plot(z_ts,
@@ -83,7 +236,7 @@ plot(z_ts,
 
 
 
-```{r F3.y}
+```{r F3.y, eval=FALSE}
 data.frame("Time" = 1:(length(z_ts)),
            "Z" = z_ts) -> lorenz_z
 lm(Z ~ Time, data = lorenz_z) -> z_lm
@@ -103,7 +256,7 @@ lm(Z ~ Time, data = lorenz_z) -> z_lm
 
 
 
-```{r F3.z}
+```{r F3.z, eval=FALSE}
 hist(z_lm$residuals,
      breaks = 50,
      main = "Histogram of residuals",
@@ -131,12 +284,10 @@ hist(dice_rolls,
 
 The following process for simulating data is presented in Chapter 4. Be sure that you have thoroughly covered the appropriate section there!
 ```{r F6.2}
-# Refer to Chapter 4 for an explanation
 set.seed(62)
 1e6 -> R
 replicate(R,
           sum(sample(1:6, 2, replace = TRUE))) -> two_dice_results
-
 
 hist(two_dice_results,
      main = "Frequency of Results from One Million Simulations of Two Dice",
@@ -152,15 +303,25 @@ hist(two_dice_results,
 c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6,
   7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 9, 9, 9, 9,
   10, 10, 10, 11, 11, 12) -> dice_rolls
-ks.test(two_dice_results,  # Perform a Komogorov-Smirnov test,
-        dice_rolls)        #  comparing the simulated results 
-                           #  to the frequencies in Table 6.1
+stats::ks.test(two_dice_results,  # Perform a Komogorov-Smirnov test,
+               dice_rolls)        #  comparing the simulated results 
+                                  #  to the frequencies in Table 6.1
+
+# Try a chi-squared approach; Fisher's exact test would be better,
+#  but the numbers in the first row of dice_mat are too large. We simulate 
+#  the p-value because the numbers in the second row of dice_mat are small.
+table(two_dice_results) -> dice_freq
+table(dice_rolls) -> rolls_freq
+rbind(dice_freq, rolls_freq) -> dice_mat
+chisq.test(dice_mat,
+           simulate.p.value = TRUE)
+# The chi-squared test may be more sensitive than the K-S test.
 ```
 
 ```{r T6.2}
 set.seed(62)
-1e8 -> R   # Takes about 8000 seconds on my computer.
-           # 1e6 replications takes about 8 seconds.
+1e6 -> R   # 1e8 replications take about 8000 seconds on my computer.
+           # 1e6 replications take about 8 seconds.
 replicate(R,
           sum(sample(1:6, 2, replace = TRUE))) -> two_dice_results
 
@@ -178,15 +339,32 @@ data.frame("Dice Total" = 2:12,
                                            digits = 4)) -> 
   dice_prob_df
 
-grid.arrange(
-  tableGrob(dice_prob_df, 
-            theme = ttheme_default(),
-            cols = c("2 Dice Total",
+kable(x = dice_prob_df,
+      format = 'simple',
+      caption = "Figure 6.x",
+      digits = 4,
+      row.names = FALSE,
+      colnames = c("2 Dice Total",
                      "Probability",
-                     "Simulated Probability")))
-
-# NEed to do something with kable() or some other package - gridExtra or lemon_print
+                     "Simulated Probability"),
+      align = 'c')
 ```
+
+```{r F6.3}
+set.seed(63)
+1e6 -> R
+runif(n = R,
+      min = 0,
+      max = 1) -> unif
+
+hist(unif,
+     breaks = 40,
+     main = "Frequency of draws from a uniform distribution",
+     xlab = "value",
+     ylab = "Frequency")
+```
+
+
 
 
 
@@ -198,67 +376,84 @@ c(21, 19, 13, 22, 15, 22, 15, 22, 20, 12, 24, 24, 21, 19, 18, 16, 23, 20) ->
 ```
 
 
-```{r F3.5}
-# First, randomly set up the cups, "M" for milk-first, "T" for
-#  tea-first.
-sample(rep(c("M","T"), each = 4), 8, replace = FALSE) -> treatment
 
-# Determine how many times to try guessing
-1e6 -> N
 
-# The guessing function. Taken with the replicate() command below,
-#  this will be part one of the process. (See the text.)
-guess1 <- function(treat) {          # Define a function.
-  # The function "guess1" takes the arrangement of cups
-  # and returns whether or not the guess was right or wrong.
-  
-  # Make the guess:
-  sample(rep(c("M","T"), each = 4),  # 8 guesses; four of each
-         8,                          
-         replace = FALSE) -> attempt
-  
-  # Compare to the treatment
-  return(length(which(treat == attempt)))
-  
-#  if(all(attempt == treat)) {  # Compare the guesses to the treatments
-#    return(TRUE)               # The guesses were all correct!
-#  } else {
-#    return(FALSE)              # At least one guess was wrong
-#  }
-}
 
-set.seed(35)
+```{r F6.9}
+1:100 -> x
+x^(-1.1) -> y
+plot(x,y)
+plot(x,y,log = "xy")
 
-# The next is part 1, the large number of guesses. (See the text.)
-replicate(N, guess1(treatment)) -> results
+```
 
-# The next is part 2; aggregation of the results.
-# The table() command creates a table with the number of times each
-#  result appears in the argument. By default, the table will be
-#  sorted in ascending order.
-table(results) -> results_tab
+```{r F6.13}
+1:9 -> side
+side*side -> area
+plot(side, area,
+     main = "Log-log plot of square's area",
+     xlab = "side length (cm)",
+     ylab = "Area (cm2)",
+     log = "xy")
 
-# Finally, part 3 (see the text): What fraction of the results meet
-#  the criteria? This will be the probability of success. In the next
-#  command, length(results_tab) returns how many items are in the
-#  table. Because the last item is the one we want (all 8 correctly
-#  identified), this is an easy way to get that.
-results_tab[length(results_tab)] / N
+```
+
+
+```{r CS6.6}
+1:9 -> side
+side*side -> area
+
+log(side) -> l_side
+log(area) -> l_area
+
+summary(lm(l_area ~ l_side))
+
+```
+
+Code Snippet 6.8, Figures 6.10 & 6.11
+```{r}
+# Data from: https://finance.yahoo.com/quote/%5EGSPC/history/
+# CSPC.csv in data folder
+library(nonlinearTseries)
+
+read.csv(file = file.choose(),
+         header = TRUE) -> SPX_df
+dfa(time.series = SPX_df$Close) -> dum1
+lm(dum1[[1]] ~ dum1[[2]])
+
+
+# Could also use?
+# nonlinearAnalysis::dfa()
 
 ```
 
 
 
-
-```{r F3.28}
+Code Snippet 6.11 and Figure 6.28
+```{r CS6.11}
 # Spam data (Poisson)
 # From my SJFC spam filter: Number of spam messages caught daily, from 1/23/20
 #  through about the next month
-c(4, 3, 2, 1, 3, 1, 3, 2, 2, 0, 0, 0, 1, 1, 6, 5, 1, 2, 1, 2, 3, 1, 2,
-  3, 1, 0, 1, 2, 1, 3, 3, 2, 2) -> spam
-ks.test(spam,         # data to test
-        ppois,        # hypothesized distribution
-        mean(spam))   # parameter for ppois
+c(4, 3, 2, 1, 3, 1, 3, 2, 2, 0, 0, 0, 1, 1, 4, 6, 5, 1, 2, 1, 2, 3, 1, 2,
+  3, 1, 0, 1, 2, 1, 3, 3, 2, 4, 2) -> spam
+
+# Cramer-von Mises test for discrete distributions
+goftest::cvm.test(spam, 
+                  ppois, 
+                  mean(spam), 
+                  estimated = TRUE)  # Important: We use the mean(spam) not something else.
+
+# Alternative to Cramer-von Mises test approach. the null
+#  hypothesis is that both are the same
+dpois(0:6, mean(spam)) -> null
+rbind(table(spam)/sum(table(spam)), null) -> probs
+chisq.test(probs,
+           simulate.p.value = TRUE)
+
+# Notice that the next does NOT work; KS does not work with discrete distributions
+stats::ks.test(spam,         # data to test
+              ppois,        # hypothesized distribution
+              mean(spam))   # parameter for ppois
 
 library(MASS)
 fitdistr(spam, "Poisson")  -> pois_est
@@ -284,4 +479,121 @@ pois_est$sd
 }
 ```
 
+
+```{r}
+x <- matrix(c(12, 5, 7, 20), ncol = 2)
+chisq.test(x)$p.value           # 0.4233
+chisq.test(x, simulate.p.value = TRUE, B = 10000)$p.value
+                                # around 0.29!
+
+```
+
+Try these with package:dgof. The next are (using base-R) from:
+[Nonparametrics Section 6.1](https://bookdown.org/egarpor/NP-UC3M/)
+```{r}
+# Sample data with H_0 true
+n <- 20
+mu0 <- 2; sd0 <- 1
+set.seed(12341)
+samp <- rnorm(n = n, mean = mu0, sd = sd0)
+
+# Fn vs F0
+plot(ecdf(samp), main = "", ylab = "Probability")
+curve(pnorm(x, mean = mu0, sd = sd0), add = TRUE, col = 2)
+
+# Maximum distance
+samp_sorted <- sort(samp)
+Ui <- pnorm(samp_sorted, mean = mu0, sd = sd0)
+Dn_plus <- (1:n) / n - Ui
+Dn_minus <- Ui - (1:n - 1) / n
+i <- which.max(pmax(Dn_plus, Dn_minus))
+lines(rep(samp_sorted[i], 2), 
+      c(i / n, pnorm(samp_sorted[i], mean = mu0, sd = sd0)), 
+      col = 4, lwd = 2)
+rug(samp)
+legend("topleft", lwd = 2, col = c(1:2, 4), 
+       legend = latex2exp::TeX(c("$F_n$", "$F_0$", "sup_x|F_n(x)-F_0(x)|")))
+```
+
+
+```{r}
+# Sample data from a N(0, 1)
+n <- 50
+set.seed(3245678)
+x <- rnorm(n = n)
+
+# Kolmogorov-Smirnov test for H_0: F = N(0, 1). Does not reject
+(ks <- ks.test(x = x, y = "pnorm")) # In "y" we specify the cdf F0 as a function
+## 
+##  One-sample Kolmogorov-Smirnov test
+## 
+## data:  x
+## D = 0.050298, p-value = 0.9989
+## alternative hypothesis: two-sided
+
+# Structure of "htest" class
+str(ks)
+## List of 5
+##  $ statistic  : Named num 0.0503
+##   ..- attr(*, "names")= chr "D"
+##  $ p.value    : num 0.999
+##  $ alternative: chr "two-sided"
+##  $ method     : chr "One-sample Kolmogorov-Smirnov test"
+##  $ data.name  : chr "x"
+##  - attr(*, "class")= chr "htest"
+
+# Kolmogorov-Smirnov test for H_0: F = N(0.5, 1). Rejects
+ks.test(x = x, y = "pnorm", mean = 0.5)
+## 
+##  One-sample Kolmogorov-Smirnov test
+## 
+## data:  x
+## D = 0.24708, p-value = 0.003565
+## alternative hypothesis: two-sided
+
+# Kolmogorov-Smirnov test for H_0: F = Exp(2). Strongly rejects
+ks.test(x = x, y = "pexp", rate = 1/2)
+## 
+##  One-sample Kolmogorov-Smirnov test
+## 
+## data:  x
+## D = 0.53495, p-value = 6.85e-14
+## alternative hypothesis: two-sided
+```
+
+
+```{r}
+# Sample data from a Pois(5)
+n <- 100
+set.seed(3245678)
+x <- rpois(n = n, lambda = 5)
+
+# Kolmogorov-Smirnov test for H_0: F = Pois(5) without specifiying that the 
+# distribution is discrete. Rejects (!?) giving a warning message
+ks.test(x = x, y = "ppois", lambda = 5)
+## 
+##  One-sample Kolmogorov-Smirnov test
+## 
+## data:  x
+## D = 0.20596, p-value = 0.0004135
+## alternative hypothesis: two-sided
+
+# We rely on dgof::ks.test, which works as stats::ks.test if the "y" argument 
+# is not marked as a "stepfun" object, the way the dgof package codifies
+# discrete distribution functions
+
+# Step function containing the cdf of the Pois(5). The "x" stands for the 
+# location of the steps and "y" for the value of the steps. "y" needs to have
+# an extra point for the initial value of the function before the first step
+x_eval <- 0:20
+ppois_stepfun <- stepfun(x = x_eval, y = c(0, ppois(q = x_eval, lambda = 5)))
+plot(ppois_stepfun, main = "Cdf of a Pois(5)")
+```
+
+
+Code Snippet 6.10 - Lognormal data fit by lognormal and by power-law. Introduces AIC & BIC, using fitdistrplus::fitdist
+[fitdist](https://www.rdocumentation.org/packages/fitdistrplus/versions/1.1-3/topics/fitdist)
+```{r CS6.10}
+
+```
 

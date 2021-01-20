@@ -7,122 +7,444 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(knitr)
+
+# The next five lines install the knitr package if necessary and add it to the 
+#  environment. Just ignore these for now.
+if (!is.element("knitr", 
+                installed.packages()[, 1])) {  # If knitr isn't installed...
+    install.packages("knitr")                  #  ...install it!
+  }
+library(knitr)                         # Add package:knitr to the environment
+
+options(show.signif.stars = FALSE)     # Because significance stars are wrong! 
 ```
 
-```{r}
+Figure 4.1. Testing the R installation.
+```{r F4.1}
+# This chunk contains the commands we used to test our R installation.
+# You should copy and paste these lines, one at a time, into R.
 c(1, 2, 3, 4, 5) -> integers
 integers
 mean(integers)
 ```
 
+Figures 4.4 - 4.7: These come from a separate file that you create.
 
-```{r 4.1}
-read.csv("https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/sample.csv",
-         header = TRUE) -> sample_data
-sample_data
-lm(y~x, data = sample_data)
+Code Snippet 4.1.
+```{r CS4.1}
+# The name in the previous line is for "Code Snippet 4.1." I'll follow this  
+#  convention all the way through this document. "F4.n" will be for code used
+#  to produce a figure, but which is not discussed in the text. "T4.n" will be
+#  used for code that produces a table.
+
+# Read some sample data, and store it in a variable. Notice that the name of 
+#  the variable, "sample_data_df" describes the data (sample data) and 
+#  describes the type of data ("data frame").
+read.csv("https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/sample.csv",                  # URL of data file
+         header = TRUE) ->   # The first row has the column headers
+  sample_data_df             # Name of the variable that stores the data
+sample_data_df               # Display the data
+lm(y ~ x,                    # Create a linear model (a.k.a. regression)
+                             #  with y as the dependent variable and x
+                             #  x as the independent variable.
+   data = sample_data_df)    # Use x and y columns from sample_data_df
 ```
 
-```{r 4.2, fig.width=6.5}
-1:10 -> x
-x^2 -> y
-plot(x,y)
+This code shows up as Figure 4.8. Sample code chunk.
+```{r F4.8}
+read.csv("https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/sample.csv",                    # URL of data file
+         header = TRUE) ->   # The first row has the column headers
+  sample_data_df             # Name of the variable that stores the data
+sample_data_df               # Display the data
+lm(y~x,                      # Create a linear model (a.k.a. regression)
+                             #  with y as the dependent variable and x
+                             #  x as the independent variable.
+   data = sample_data_df)    # Use x and y columns from sample_data_df
 ```
 
-```{r 4.3, fig.width=6.5}
+Code Snippet 4.2 and Figure 4.9
+```{r CS4.2_F4.9}
+1:10 -> x     # Put some data (the integers 1 to 10) into variable x.
+x^2 -> y      # Put the square of x into y.
+plot(x,y)     # Make a graph of y versus x.
+```
+
+Code Snippet 4.3 and Figure 4.10. A "better" plot.
+```{r CS4.3_F4.10}
+1:10 -> x                        # Put some data into variable x
+x^2 -> y                         # Put the square of x into y
 plot(x, y,
      main = "Dummy Data",        # Change the title above the plot
      sub = "More advanced plot", # Subtitle
      xlab = "X",                 # set the x-axis label
      ylab = "Y",                 # set the y-axis label
+     cex.lab = 1.5,              # make the labels 50% bigger
      xlim = c(0,16),             # set the x-axis range 
      ylim = c(0,50),             # set the y-axis range
-     pch = 16,                   # Use a solid dot, not an open
-                                 #  circle
-     cex = 0.8)                  # make the dots a little smaller;
-                                 #  cex = 1 is the default size
+     pch = 16,                   # Use a solid dot, not an open circle
+     cex = 0.8)                  # make the dots 80% of normal size
 ```
 
-```{r 4.4, fig.width=6.5}
-rnorm(n = 1000,
-      mean = 0,
-      sd = 1) -> dummy_data
-hist(dummy_data,
-     breaks = 50,
+Code Snippet 4.4 and Figure 4.11
+```{r CS4.4_F4.11}
+rnorm(n = 1000,         # Draw 1000 times from a normal distribution
+      mean = 0,         #  with a mean of zero
+      sd = 1) ->        #  and a standard deviation of 1
+  dummy                 #   and assign it to variable dummy
+hist(dummy,             # Make a histogram of variable dummy
+     breaks = 50,       #  using 50 bins
      main = "Normal distribution histogram")
 ```
 
-```{r 4.5}
-2 + 3
-8 - 5
-8 * 7
-16 / 2
-sqrt(81)
-2 ^ 5
-exp(3)
-log(8, 2)
-log(1000, 3)
-mean(1:10)
-sd(1:10)
-median(1:10)
-min(1:10)
-max(1:10)
+Code Snippet 4.5 and Table 4.2.
+```{r CS4.5_T4.2}
+cbind(1:5, 6:10, 111:115) ->         # Combine 1:5, 6:10, and 111;111
+                                     #  as three columns ("column bind")
+  bad_table                          #  and store in the variable "bad_table".
+bad_table                            # Print an ugly table
+
+kable(x = bad_table,                 # Print bad_table
+      format = "simple",             # No shading
+      row.names = FALSE,             # No row names
+      col.names = c("A", "B", "C"),  # Add (bold) column names
+      align = 'c',                   # Center the numbers
+      caption = "Output")            # Caption above the table
 ```
 
-```{r 4.6}
-1:15 -> data1
-seq(from = 2,
-    to = 30,
-    by = 2) -> data2
-data1 + data2
+Code Snippet 4.6
+```{r CS4.6}
+2 + 3             # Addition (2 plut 3 = 5)
+8 - 5             # Subtraction (8 minus 5 = 3)
+8 * 7             # Multiplication (8 times 7 = 56)
+16 / 2            # Division (16 divided by 2 = 8)
+17 %/% 2          # Integer division quotient. 2 goes into 17 8 times
+17 %% 2           # modulo, a.k.a. "remainder." 17/2 has remainder 1.
+sqrt(81)          # Square root of 81
+2 ^ 5             # Power (2 raised to the 5th power)
+exp(3)            # Exponential
+log(8, 2)         # log base 2 of 8
+log(1000, 3)      # log base 3 of 1000
+mean(1:10)        # Find the mean of the integers 1 to 10
+sd(1:10)          # Find the standard deviation of the integers 1 to 10
+median(1:10)      # Find the median of the integers 1 to 10
+min(1:10)         # Find the minimum of the integers 1 to 10
+max(1:10)         # Find the maximum of the integers 1 to 10
 ```
 
-```{r 4.7, fig.width=6.5}
-1:15 -> ind_var
-3 * ind_var + 4 -> dep_var
-plot(ind_var, dep_var,
-     main = "Noiseless data")
-
-set.seed(42)
-runif(n = 15,
-      min = -5,
-      max = 5) + dep_var -> dep_var
-plot(ind_var, dep_var,
-     main = "Noisy data",
-     sub = "Compare to Figure 4.11")
+Code Snippet 4.7
+```{r CS4.7}
+1:15 -> data1          # Put the integers 1 through 15 into data1
+seq(from = 2,          # Put a sequence, starting at 2...
+    to = 30,           #  ...going up to 30...
+    by = 2) ->         #  ...counting by twos...
+  data2                #  ...into the variable data2
+data1                  # Display data1 (i.e., 1 through 15)
+data2                  # Display data2 (2, 4, 6, ... 30)
+data1 + data2          # Add these together and display 
 ```
 
-```{r 4.8}
-lm(dep_var ~ ind_var) -> y_lm
-summary(y_lm)
-kable(coefficients(summary(y_lm)),
-      digits = 3)
+Code Snippet 4.8 and Figure 4.12(a)
+```{r CS4.8_F4.12}
+1:15 ->                        # Put the integers 1:15 into
+  ind_var                      #  the independent variable
+                   
+3 * ind_var + 4 -> dep_var      # Use a linear relationship to create the
+                                #  dependent variable
+plot(ind_var, dep_var,          # Make a scatterplot
+     main = "Noiseless data")   #  with a title.
 
-{
-  plot(ind_var, dep_var,      # Plot the data
-       main = "Dummy Data",   # Change the title above the plot
-       xlab = "X",            # set the x-axis label
-       ylab = "Y",            # set the y-axis label
-       xlim = c(0,16),        # set the x-axis range 
-       ylim = c(0,50),        # set the y-axis range
-       pch = 16,              # Use a solid dot, not an open circle
-       cex = 0.8)             # make the dots a little smaller
-  abline(a = y_lm$coef[1],    # Add a line to the plot, with
-                              #  intercept a
-         b = y_lm$coef[2],    #  and slope b
-         col = "darkgreen")   #  and use a dark green color
-  text(1, 40,                 # Put some text info on the plot
-       # "paste" together the text and the slope, 
-       #   rounded to 2 digits. Put the lower left point of
-       #   that text at the point (1,40) on the graph:
-       labels = paste0("slope = ", 
-                      round(y_lm$coef[2], digits = 2)), 
-       adj = c(0,0))
-  text(1, 35,                 # Put some more text on the plot
-       labels = paste("intercept = ", 
-                      round(y_lm$coef[1], digits = 2)),
-       adj = c(0,0))
+set.seed(seed = 42)             # Look at the "Sampling" section in Chapter 4.
+runif(n = 15,                   # Get 15 random numbers
+      min = -5,                 #  from -5
+      max = 5) +                #  to 5
+  dep_var ->                    #  add them to the original
+  dep_var                       #  and store the results back in
+                                #  the original dependent variable.
+plot(ind_var, dep_var,          # Make a scatterplot
+     main = "Noisy data",       #  with a title and subtitle:
+     sub = "Compare to Figure 4.12(a)")
+```
+
+Code Snippet 4.9, Tables 4.3 and 4.4, and Figure 4.13
+```{r CS4.9_T4.3_T4.4_F4.13}
+1:15 ->                             # Put the integers 1:15 into
+  ind_var                           #  the independent variable
+                   
+3 * ind_var + 4 -> dep_var          # Use a linear relationship to create
+                                    #  the dependent variable
+set.seed(seed = 42)                 # Look at the "Sampling" section in 
+                                    #  Chapter 4.
+runif(n = 15,                       # Get 15 random numbers
+      min = -5,                     #  from -5
+      max = 5) +                    #  to 5
+  dep_var ->                        #  add them to the original
+  dep_var                           #  and store the results back in
+                                    #  the original dependent variable.
+plot(ind_var, dep_var,              # Scatterplot
+     main = "Noiseless data")       #  with a title
+
+lm(dep_var ~ ind_var) ->            # Regress dependent variable on the
+                                    #  independent variable
+  y_lm                              #  and store the results in y_lm
+summary(y_lm)                       # Summarize the linear model (ugly)
+kable(coefficients(summary(y_lm)),  # Nicer printing of the regression
+                                    #  coefficients,
+      digits = 3)                   #  rounded to 3 digits
+
+{                                   # Put the scatterplot, line & text
+                                    #  all on the same plot
+  plot(ind_var, dep_var,            # Plot the data
+       main = "Dummy Data",         # Change the title above the plot
+       xlab = "Independent",        # set the x-axis label
+       ylab = "Dependent",          # set the y-axis label
+       xlim = c(0,16),              # set the x-axis range 
+       ylim = c(0,50),              # set the y-axis range
+       pch = 16,                    # Use a solid dot, not an open circle
+       cex = 0.8)                   # make the dots 80% normal size
+  abline(a = y_lm$coef[1],          # Add a line to the plot, with
+                                    #  intercept from the linear model,
+         b = y_lm$coef[2],          #  slope from the linear model,
+         col = "darkgreen")         #  and using a dark green color.
+  text(1, 40,                       # Put some text info on the plot @ (1,40)
+       labels = paste(              # The label will have, pasted together,
+         "slope =",                 #  "slope ="
+         round(y_lm$coef[2],        #  and the value of the slope from the
+                                    #  regression,
+               digits = 2)),        #  rounded to 2 decimal places.
+       adj = c(0,0),                # Lower left point at (1,40) on graph
+       cex = 1.2)                   # 20% bigger text
+  text(1, 35,                       # Put some more text on the plot
+       labels = paste(              # Paste together
+         "intercept = ",            #  "intercept = "
+         round(y_lm$coef[1],        #  the value of the intercept from the
+                                    #  regression
+               digits = 2)),        #  rounded to two decimal places.
+       adj = c(0,0),
+       cex = 1.2)                   # 20% bigger text
 }
 ```
 
+Code Snippet 4.10 and Figure 4.14
+```{r CS4.10_F4.14}
+1:15 ->                             # Put the integers 1:15 into
+  ind_var                           #  the independent variable
+                   
+3 * ind_var + 4 -> dep_var          # Use a linear relationship to create
+                                    #  the dependent variable
+set.seed(seed = 42)                 # Look at the "Sampling" section in 
+                                    #  Chapter 4.
+runif(n = 15,                       # Get 15 random numbers
+      min = -5,                     #  from -5
+      max = 5) +                    #  to 5
+  dep_var ->                        #  add them to the original
+  dep_var                           #  and store the results back in
+                                    #  the original dependent variable.
+plot(ind_var, dep_var,              # Scatterplot
+     main = "Noiseless data")       #  with a title
+
+lm(dep_var ~ ind_var) ->            # Regress dependent variable on the
+                                    #  independent variable
+  y_lm                              #  and store the results in y_lm
+
+plot(y_lm,                          # Plot the results of the linear model.
+                                    # Notice that the plot() command is
+                                    #  pretty smart. It detects that y_lm
+                                    #  is a linear model and plots
+                                    #  appropriately!
+     which = 1)                     # There are four plots; use the first.
+                                    # Type ?plot.lm at the command prompt
+                                    #  in the console, and press <Enter>
+                                    #  to see what the others are.
+```
+
+Code Snippet 4.11
+```{r CS 4.11}
+read.csv(
+  "https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/ANOVA.csv",                                      # Read in some synthetic data;
+      header = TRUE,                     # First row has the column names;
+       stringsAsFactors = FALSE) ->      # Don't worry...just include this.
+  anova_data                             # Store the data.
+
+# Let's find the different in means between the groups, using the next
+#  two commands. The second command takes a bit of unpacking, but it is
+#  a useful trick. We use [] to get particular entries. In the first mean()
+#  we only want the Score[] which have the corresponding Group equal to
+#  "A". (Notice the double equal sign. That's important!) The second
+#  mean() does the same thing, but uses Group "B".
+print("Difference in means between groups A & B:")
+mean(anova_data$Score[which(anova_data$Group == "A")]) -
+  mean(anova_data$Score[which(anova_data$Group == "B")])
+
+# ANOVA results:
+summary(
+  aov(Score ~ Group,                     # Standard ANOVA. The Score depends
+                                         #  on the Group.
+      data = anova_data))                # Print the ANOVA results
+
+# Linear model results:
+summary(
+  lm(Score ~ Group,              # Do an ANOVA via a linear model!
+     data = anova_data))         # Use the same data as above.
+
+# Hey, look at that! The slope is equal to the difference in group means
+#  and the p-value is the same as noted in the aov().
+```
+
+Code Snippet 4.12
+```{r CS 4.12}
+set.seed(412)
+sample(LETTERS[1:4],                   # From the first four letters,
+       size = 2,                       #  pick two,
+       replace = FALSE,                #  do NOT replace between picks,
+       prob = c(1/4, 1/4, 1/4, 1/4))   #  use equal probabilities.
+## [1] "C" "A"
+
+set.seed(412)
+sample(LETTERS[1:4],                   # replace = FALSE and equal
+       size = 2)                       #  probabilities are the defaults
+## [1] "A" "D"                         # But the results are different!
+#
+#
+# A note about the different results: Really, the default value in sample
+#  is "prob = NULL" which is implemented in the underlying code slightly 
+#  differently than listing the four equal probabilities. Look at this:
+#
+set.seed(412)
+sample(LETTERS[1:4],                   # replace = FALSE and equal
+       size = 2,                       #  probabilities are the defaults
+       prob = NULL)                    # The default is "NULL."
+## [1] "A" "D"                         # Now the results are the same.
+```
+
+Code Snippet 4.13 and Figures 4.15 and 4.16
+```{r CS4.13_F4.15_F4.16}
+set.seed(seed = 413)
+runif(n = 1e5,          # Draw 100,000 samples uniformly
+      min = -3,         # between -3...
+      max = 3) ->       # ...and 3. Store the results...
+  unif1                 # ...in variable unif1.
+hist(unif1,             # Make a histogram of the data in variable unif1.
+     breaks = 50,       # Divide the data into 50 bins
+     xlim = c(-3, 15),  # Draw graph from x = -3 to x = 15. (See next example.)
+     main = "Uniform Distribution [-3,3]")  # Put a title on the graph
+
+runif(n = 1e5,
+      min = 3,
+      max = 15) -> # Use a different maximum value
+  unif2
+hist(unif2,
+     breaks = 50,
+     main = "Uniform Distribution [3,15]")
+
+rnorm(n = 1e5,           # Draw 100,000 samples from a normal distribution...
+      mean = 0,          # ...with a mean of 0...
+      sd = 3) ->         # ...and standard deviation of 3. Store the results...
+  norm1                  # ...in variable norm1.
+hist(norm1,              # Make a histogram.
+     breaks = 50,        #  
+     main = expression(  # "expression" allows for math and Greek characters.
+       paste(            # "paste" all this stuff together:
+         "Normal Distribution: ",  # String
+         mu,                       # Greek letter mu (because of expression)
+         " = 0, ",                 # Another string
+         sigma,                    # Greek letter sigma
+         " = 1 ")),                # Another string
+     xlim = c(-10, 20))            # Set the limits (see the next two)
+
+rnorm(n = 1e5,
+      mean = 4,
+      sd = 3) -> 
+  norm2
+hist(norm2,
+     breaks = 50,
+     main = expression(paste("Normal Distribution: ",
+                  mu,
+                  " = 4, ",
+                  sigma,
+                  " = 3 ")),
+     xlim = c(-10, 20))
+
+rnorm(n = 1e5,
+      mean = 4,
+      sd = 1) -> 
+  norm3
+hist(norm3,
+     breaks = 50,
+     main = expression(paste("Normal Distribution: ",
+                  mu,
+                  " = 4, ",
+                  sigma,
+                  " = 1 ")),
+     xlim = c(-10, 20))
+```
+
+
+Code Snippet 4.14: Fisher's experiment
+```{r CS4.14}
+set.seed(414)
+8 -> cups            # Fisher proposed 8 cups
+cups/2 -> cd2        # Half the cups will be tea and half milk
+# First, randomly set up the cups, "M" for milk-first, "T" for
+#  tea-first.
+sample(                # Create a random sample...
+  rep(c("M","T"),      #  ...from a collection of Milk and Tea...
+      each = cd2),     #  ...using 4 of each.
+  cups,                # Get a total of 8 cups.
+  replace = FALSE) ->  # Don't reuse the cups. 
+  treatment            # Put that into the variable treatment
+
+1e6 -> N               # Repeat the experiment 1 million times
+
+# First, it will make life easier to create a "function." The next command
+#  allows us to treat "guess1" just like any other built-in R function.
+#  (In other words, we are expanding R's capabilities.)
+guess1 <- function(treat) {          # Define a function.
+  # The function "guess1" takes the arrangement of cups (the variable treat),
+  #  makes a random guess and returns how many cups were correctly identified
+  #  by the guess.
+
+  length(treat) -> cups   # How many cups are in the treatment?
+  cups / 2 -> cd2         # Half the cups are milk, half are tea.
+
+  sample(                 # This sample caommand should look familiar!
+    rep(c("M","T"),       # Hint: Look up about a dozen lines
+        each = cd2),
+    cups,                          
+    replace = FALSE) -> 
+    attempt               # The guess is stored in the variable attemp
+
+  # The next takes a bit of unpacking. The which() command returns the
+  #  positions of all those entries that meet some criteria. In this case,
+  #  the criteria is "treat == attempt"; NOTICE THE DOUBLE EQUAL SIGN!
+  # The == means "if the first thing is equal to the second" then the
+  #  criteria is met. (In computer science speak, we'll say "return TRUE.")
+  # length() counts how many things met which()'s criteria.
+  # Whew!
+  return(                 # Return the results to whatever called the function
+    length(
+      which(treat == attempt)))
+}
+
+# The next is part 1, the large number of guesses. (See the text.)
+replicate(N,                      # Do the next line N times
+          guess1(treatment)) ->   # Make the guess!
+  results                         # Store in a variable called results.
+
+table(results) -> results_tab     # Create a table of the results
+                                  # These will be in order from 0 correct
+                                  #  up to all correct.
+
+# Now, for the answer: What fraction of results guessed all the cups
+#  correctly? 
+results_tab[length(results_tab)] / N
+```
+
+Figure 4.16. Indicator of an error. This next chunk intentionally has an error in it, so you need to  correct the error (or remove the line) before knitting.
+```{r F4.16}
+# To knit this file, you would need to use the correct version of the next
+#  command. Otherwise, the error will cause the knitting to stop.
+# Hence, before knitting, put a hashtag in front of the next command.
+
+lm(y ~ x, data sample_data_df)
+
+```

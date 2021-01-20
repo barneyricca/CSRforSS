@@ -1,0 +1,192 @@
+---
+title: "RQA Examples"
+author: "BPR"
+date: "10/28/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+# ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+#                                                                       #
+# Most of this chunk loads packages that I usually want, sets           #
+#  things to display the way I want them to, and helps with             #
+#  file management.                                                     #
+# The packages that are specific to this RQA example is crqa. The       #
+#  packages that are used to process the text file are readtext,        #
+#  SnowballC, and tm.                                                   #
+#                                                                       #
+# Many thanks to Aaron Likens, with whom this script (and its idea)     #
+#  originated.                                                          #
+#                                                                       #
+# ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+
+knitr::opts_chunk$set(echo = TRUE)
+
+#library(nonlinearTseries)
+
+# Most
+c("conflicted",     # To handle package function name conflicts
+  "crqa",           # For RQA
+  "data.table",     # Faster data access
+  "dplyr",          # To wrangle data
+  "dtplyr",         # For fast dplyr
+  "here",           # To find/store files w/o setwd() and getwd()
+#  "igraph",          # I'm still better at this
+#  "intergraph",     # Conversion to statnet format
+  "Rcpp",           # For speed when needed
+  "readtext",       # readtext() function
+#  "readxl",         # Read Excel files
+#  "statnet",        # ERGM, etc.
+  "SnowballC",      # For text processing
+  "stringr",        # General string functions
+  "tidytable",      # Faster tidyr
+  "tidyr",          # Data wrangling
+  "tm"              # Text manipulation
+#  "tseriesChaos"    # Some useful functions
+) -> package_names
+
+# Are these needed (RQA)?
+#library(nonlinearTseries)
+#library(tm)
+
+for(package_name in package_names) {
+  if(!is.element(package_name, installed.packages()[,1])) {
+    install.packages(package_name, dependencies = TRUE)
+  }
+  library(package_name, character.only=TRUE,
+          quietly=TRUE,verbose=FALSE)
+}
+
+rm(list=c("package_names","package_name"))
+
+set_here()      # This helps with folder structure when shifting computers
+
+set.seed(07012020)                 # Set the seed for random numbers
+
+# Stuff I prefer
+options(show.signif.stars = FALSE) # Avoid conflating p-value & effect size
+options(digits = 4)                # Round to 4 digits
+```
+
+```{r functions}
+# ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+#                                                                       #
+# cleanText is a little helper function to clean up the text from the   #
+#  lyrics.
+#                                                                       #
+# ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+
+cleanText = function(x) {              # User-defined function
+  rawText = gsub('\\n',' ',x)          # Get rid of the new line breaks
+  rawText = gsub('\\r',' ',x)          # Get rid of any hard returns
+  ts = Corpus(VectorSource(rawText))   # Create a time series dictionary 
+                                       #  from the text.
+  ts = tm_map(ts, removePunctuation)   # Yep, remove the punctuation 
+  ts = tm_map(ts, removeNumbers)       # Remove numbers
+  ts = tm_map(ts, tolower)             # Make everything lower case
+  ts = tm_map(ts, stripWhitespace)     # Get rid of white spaces
+  ts = tm_map(ts, stemDocument)        #
+  ts = tm_map(ts, PlainTextDocument)   #
+  ts = as.character(ts[[1]])           # Make it all characters
+  words = unlist(strsplit(ts, ' '))    # Break each word into a separate
+                                       #  entry.
+  return(words)                        # Send that back
+}
+```
+
+```{r RQA1}
+# ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+#                                                                       #
+# Multiple steps:                                                       #
+#  1. Read in data stored in a plain text file online.                  #
+#  2. Put that text into the proper format                              #
+#  3. Compute the RQA                                                   #
+#  4. Display the recurrence plot                                       #
+#  5. Display some statistics                                           #
+#                                                                       #
+# ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+
+# This is where I put the lyrics. You can type this into your
+#  brower's address bar to see the lyrics.
+"http://citadel.sjfc.edu/faculty/bricca/Data/Let_It_Be_lyrics.txt" -> f
+readtext(f)$text -> shot    # Aaron used Wilco's "A shot in the dark"
+
+suppressWarnings(cleanText(shot)) -> shot   # Clean the text
+unique(shot) -> unique_words                # Get a list of unique words
+
+# Derive a an ordered sequence that characterizes words in terms of their
+#  order of appearance. Duplicates retain the same number:
+as.vector(                        # Need a vector, not a list
+  sapply(shot,                    # Apply to every word
+         function(x) {which(x == unique_words)} # Which unique word is x?
+         )) -> word_series        # Make these into a series
+
+# compute RQA and RP
+crqa::crqa(ts1 = word_series, # Horizontal axis is word_series
+           ts2 = word_series, # Vertical axis is word_series
+           delay = 1,         # You can play with this if you want
+           embed = 1,         # This is a one-dimensional embedding
+                              #  Play with embed if you want.
+           rescale = 2, 
+           radius = 0.0001,   # We're doing exact matches, but 
+                              #  setting radius = 0 is numerically
+                              #  a problem
+           normalize = 0,     # Don't normalize either axis
+           mindiagline = 2,
+           minvertline = 2, 
+           tw = 0,            # Don't use the line of incidence in
+                              # RQA calculations
+           whiteline = FALSE, 
+           recpt = FALSE, 
+           method = 'rqa') -> res
+
+# set plot parameters for the recurrence plot
+list(unit = 50,
+    labelx = "Time", 
+    labely = "Time", 
+    cols = "blue", 
+    pcex = .5, 
+    pch = 16, 
+    labax = seq(0, nrow(res$RP), 50), 
+    labay = seq(0, nrow(res$RP), 50), 
+    las = 1) -> plot_params
+
+plotRP(res$RP, plot_params) # generate recurrence plot
+print(res[1:9])             # Print various statistics
+```
+
+```{r RQA2}
+# Now, for a different song
+"http://citadel.sjfc.edu/faculty/bricca/Data/The_Long_and_Winding_Road_lyrics.txt" -> f
+readtext(f)$text -> shot    # Aaron used Wilco's "A shot in the dark"
+
+# The rest of this simply repeats the steps above
+
+# apply clean text eliminate unwanted characters e.g., punctuation
+shot = suppressWarnings(cleanText(shot))
+unique_words = unique(shot)
+
+# derive a an ordered sequence that characterizes words in terms of their
+# order of appearance. Duplicates retain the same number
+word_series = as.vector(sapply(shot,function(x) {
+  which(x == unique_words)
+}))
+
+# compute RQA and RP
+res = crqa::crqa(ts1 = word_series, ts2 = word_series, delay = 1, embed = 1,
+           rescale = 2, radius = 0.0001, normalize = 0, mindiagline = 2,
+           minvertline = 2, tw = 0, whiteline = F, recpt = F, method = 'rqa')
+
+# set plot parameters for the recurrence plot
+plot_params = list(unit = 50, labelx = "Time", labely = "Time", 
+                   cols = "blue", pcex = .5, pch = 16, 
+                   labax = seq(0, nrow(res$RP), 50), 
+                   labay = seq(0, nrow(res$RP), 50), 
+                   las = 1)
+
+# generate recurrence plot
+plotRP(res$RP, plot_params) 
+print(res[1:9])
+
+```
+

@@ -1,0 +1,602 @@
+---
+title: "Chapter 5"
+author: "BPR"
+date: "6/24/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+{         # Put the cursor on this line, and run it; because
+          #  of the curly braces, all the code within
+          #  the braces will be run.
+#  c("bmp",          # Read .BMP files
+   c("data.table",   # fread() for fast data input
+#    "dtplyr",       # For faster tidyverse data wrangling
+#    "gridExtra",    # For better table printing
+    "knitr",         # For better table printing
+    "lmPerm",        # resampling (permutation) ANOVA
+    "pwr") ->        # statistical power
+  package_names
+
+  for (package_name in package_names) {
+    if (!is.element(package_name, installed.packages()[, 1])) {
+      install.packages(package_name)
+    }
+    library(package_name,
+            character.only = TRUE,
+            quietly = TRUE,
+            verbose = FALSE
+    )
+  }
+  rm(list = c("package_names", "package_name"))
+}
+
+# Reproducibility:
+#set_here()      # This helps with folder structure when shifting computers
+
+# Preferences:
+options(show.signif.stars = FALSE) # Do not show significance stars! Showing
+                                   #  significance stars encourages the
+                                   #  conflation of significant and effect
+                                   #  size.
+options(digits = 3)                # Round to 3 digits
+```
+
+Code Snippet 5.1
+```{r CS5.1}
+pwr.anova.test(k = 2,             # Number of groups
+               f = 0.3,           # Estimated effect size
+               sig.level = 0.05,  # Type I error probability
+               power = 0.8)       # 1 - (Type II error probability)
+```
+
+Figures 5.2-5.6
+```{r F5.2-5.6}
+curve(expr = 1 + 0*x,           # Figure 5.2
+      from = 0,
+      to = 1,
+      n = 101,
+      add = FALSE,
+      xlim = c(0,1),
+      ylim = c(0,1),
+      main = "Prior",
+      xlab = "Probability of one flip being heads",
+      ylab = "Relative likelihood",
+      yaxt = 'n')
+
+curve(expr = 1*x,           # Figure 5.3
+      from = 0,
+      to = 1,
+      n = 101,
+      add = FALSE,
+      xlim = c(0,1),
+      ylim = c(0,1),
+      main = "Prior",
+      xlab = "Probability of one flip being heads",
+      ylab = "Relative likelihood",
+      yaxt = 'n')
+
+curve(expr = 1*x,           # Figure 5.4
+      from = 0,
+      to = 1,
+      n = 101,
+      add = FALSE,
+      xlim = c(0,1),
+      ylim = c(0,1),
+      main = "Posterior after 1 flip (heads)",
+      xlab = "Probability of one flip being heads",
+      ylab = "Relative likelihood",
+      yaxt = 'n')
+
+curve(expr = (1 - x),           # Figure 5.5
+      from = 0,
+      to = 1,
+      n = 101,
+      add = FALSE,
+      xlim = c(0,1),
+      ylim = c(0,1),
+      main = "Impact of tails result",
+      xlab = "Probability of one flip being heads",
+      ylab = "Relative likelihood",
+      yaxt = 'n')
+
+curve(expr = 4 * x * (1 - x),           # Figure 5.6
+      from = 0,
+      to = 1,
+      n = 101,
+      add = FALSE,
+      xlim = c(0,1),
+      ylim = c(0,1),
+      main = "Posterior after 2 flips (H, T)",
+      xlab = "Probability of one flip being heads",
+      ylab = "Relative likelihood",
+      yaxt = 'n')
+
+
+
+```
+
+
+Code Snippet 5.2 and Figure 5.7
+
+There are better ways to do this, but for instructional purposes, this will work just fine.
+```{r CS5.2}
+101 -> n
+seq(from = 0,
+    to = 1,
+    length.out = n) -> heads
+seq(from = 1,
+    to = 0,
+    length.out = n) -> tails
+
+rep(x = 1,
+    times = n) -> prior
+
+prior * heads -> posterior               # First flip: heads
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+                                         #  sum of probabilities must equal 1.
+
+# Notice that from here on, the posterior from one flip becomes the prior
+#  for the next flip.
+posterior * tails -> posterior           # Second flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Third flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Fourth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * heads -> posterior           # Fifth flip: heads
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Sixth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * heads -> posterior           # Seventh flip: heads
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Eighth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Ninth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Tenth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+
+plot(seq(from = 0,                 # Figure 5.6
+         to = 1,
+         length.out = n),
+     posterior,
+     type = 'l',
+#     xlim = c(0,1),
+     ylim = c(0,max(posterior)),
+     main = "Posterior after 10 flips (HTTTHTHTTT)",
+     xlab = "Probability of one flip being heads",
+     ylab = "Relative likelihood",
+     yaxt = 'n')
+```
+
+Figure 5.8: A triangular prior
+```{r F5.8}
+101 -> n
+c(seq(from = 0.01,
+      to = 1,
+      length.out = (n+1)/2),
+  seq(from = 50/51,
+      to = 0.01,
+      length.out = (n-1)/2)) -> prior
+plot(seq(from = 0,                 # Figure 5.8
+         to = 1,
+         length.out = n),
+     prior,
+     type = 'l',
+     xlim = c(0,1),
+     ylim = c(0,max(prior)),
+     main = "Triangular Prior",
+     xlab = "Probability of one flip being heads",
+     ylab = "Relative likelihood",
+     yaxt = 'n')
+
+
+```
+
+Figure 5.9
+```{r CS5.2}
+101 -> n
+seq(from = 0,
+    to = 1,
+    length.out = n) -> heads
+seq(from = 1,
+    to = 0,
+    length.out = n) -> tails
+
+c(seq(from = 0,
+      to = 1,
+      length.out = 51),
+  seq(from = 50/51,
+      to = 0,
+      length.out = 50)) -> prior
+
+
+prior * heads -> posterior               # First flip: heads
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+                                         #   sum of probabilities
+                                         #   must equal 1.
+
+# Notice that from here on, the posterior from one flip becomes the prior
+#  for the next flip.
+posterior * tails -> posterior           # Second flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Third flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Fourth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * heads -> posterior           # Fifth flip: heads
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Sixth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * heads -> posterior           # Seventh flip: heads
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Eighth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Nineth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+posterior * tails -> posterior           # Tenth flip: tails
+posterior / sum(posterior) -> posterior  # "Normalize" posterior;
+
+plot(seq(from = 0,                 # Figure 5.6
+         to = 1,
+         length.out = n),
+     posterior,
+     type = 'l',
+#     xlim = c(0,1),
+     ylim = c(0,max(posterior)),
+     main = "Posterior after 10 flips (HTTTHTHTTT)",
+     xlab = "Probability of one flip being heads",
+     ylab = "Relative likelihood",
+     yaxt = 'n')
+```
+
+This replicates Figure 1 from Hoffman et al., (2018). The exact values will be different here from Hoffman et al., because of the differences in pseudo-random number generation (e.g., different "seeds").
+
+```{r F5.10}
+set.seed(630)
+
+generate_scores <- function(x, y) {
+  # Here are the parameters used by Hoffman:
+  0.5 -> mu_int_young
+  2.5 -> mu_int_old
+  0.1 -> mu_slope
+  0 -> mu_error
+
+  0.1 -> sd_int_young
+  0.1 -> sd_int_old
+  0.02 -> sd_slope
+  0.2 -> sd_error
+
+  ifelse(y < x,
+         rnorm(1, mu_int_young, sd_int_young) + 
+           rnorm(1, mu_slope, sd_slope) * y,
+         rnorm(1, mu_int_old, sd_int_old) + 
+           rnorm(1, mu_slope, sd_slope) * y) -> scores
+  scores + rnorm(length(scores), mu_error, sd_error) -> scores
+  return(scores)
+}
+
+# Generate data
+30 -> N                                           # 30 students
+6 -> mu_mature                                    # For age at transition
+0.5 -> sd_mature                                  # For age at transition
+rnorm(N, mu_mature, sd_mature) -> transitions     # Age of transition
+seq(from = 4, to = 8, by = 0.02) -> ages
+
+sapply(transitions,            # sapply() takes the first argument (variables)
+       generate_scores,        #  and uses each on in sequence in the second argument
+                               #  (the function)
+       y = ages) -> score      # and adds additional arguments. Then put the result
+                               #  for each student into the score variable
+rowSums(score) / N -> mean_score
+
+# Make the data plot
+{
+  plot(ages, score[,1],
+       type = 'l',
+       col = "grey",
+       xlab = "Age",
+       ylab = "Score")
+  for(i in 2:N) {
+    lines(ages, score[,i],
+          col = "grey",
+          lwd = 0.6)
+  }
+  lines(ages, mean_score,   # Add the mean of the data at each age
+        col = "black",
+        lwd = 0.9)
+}
+```
+
+
+This is identical to Figure 4.1, except for the use of the median_score in place of the mean_score
+
+```{r F5.11}
+set.seed(630)
+
+generate_scores <- function(x, y) {
+  # Here are the parameters used by Hoffman:
+  0.5 -> mu_int_young
+  2.5 -> mu_int_old
+  0.1 -> mu_slope
+  0 -> mu_error
+
+  0.1 -> sd_int_young
+  0.1 -> sd_int_old
+  0.02 -> sd_slope
+  0.2 -> sd_error
+
+  ifelse(y < x,
+         rnorm(1, mu_int_young, sd_int_young) + 
+           rnorm(1, mu_slope, sd_slope) * y,
+         rnorm(1, mu_int_old, sd_int_old) + 
+           rnorm(1, mu_slope, sd_slope) * y) -> scores
+  scores + rnorm(length(scores), mu_error, sd_error) -> scores
+  return(scores)
+}
+
+# Generate data
+30 -> N                                           # 30 students
+6 -> mu_mature                                    # For age at transition
+0.5 -> sd_mature                                  # For age at transition
+rnorm(N, mu_mature, sd_mature) -> transitions     # Age of transition
+seq(from = 4, to = 8, by = 0.02) -> ages
+
+sapply(transitions,            # sapply() takes the first argument (variables)
+       generate_scores,        #  and uses each one in sequence in the second
+                               #  argument (the function)
+       y = ages) ->            # and adds additional arguments. 
+  score                        # Put the result into the score variable
+
+apply(score, 1, median) -> median_score
+
+# Make the data plot
+{
+  plot(ages, score[,1],
+       type = 'l',
+       col = "grey",
+       xlab = "Age",
+       ylab = "Score")
+  for(i in 2:N) {
+    lines(ages, score[,i],
+          col = "grey",
+          lwd = 0.6)
+  }
+  lines(ages, median_score,   # Add the mean of the data at each age
+        col = "black",
+        lwd = 0.9)
+}
+```
+
+
+
+Code Snippet 5.3
+
+Wilcoxon (repeated measures)
+```{r CS5.3}
+fread(
+  "https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/exam.csv") -> 
+  exam_data 
+wilcox.test(x = pre,           # Pretest exam scores
+            y = post,          # Posttest exam scores
+            data = exam_data,  # Dataset
+            paired = TRUE,     # Repeated meausres (i.e., "paired")
+            exact = TRUE)      # Compute an exact p-value (takes longer)
+```
+
+Code Snippet 5.4
+
+Wilcoxon (independent)
+
+```{r CS5.4}
+fread(
+  "https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/exam.csv") -> exam_data
+wilcox.test(post ~ pre,        # Compare pretest to posttest
+            data = exam_data,  # Dataset
+            paired = FALSE,    # Two independent groups
+            exact = TRUE)      # Compute an exact p-value
+
+```
+
+
+Code Snippet 5.5
+Resampling approach
+Mosquitos.RData in the data folder
+Change names
+
+aovp(obs ~ type, data = mosquito_bites) -> aovp_lm
+summary(aovp_lm)
+```{r CS5.5}
+fread(
+  "https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/mosquitoes.csv") -> mosquitoes
+
+summary(aovp(bites ~ drink,      # "Permutation Analysis Of Variance"
+                                 # Do the number of bites depend on
+                                 #  the type of drink?
+             data = mosquitoes)) # Small probability, so "yes".
+
+summary(aov(bites ~ drink,       # Compare the p-value to the 
+            data = mosquitoes))  #  probability from aovp().
+```
+
+
+```{r summingNormals}
+set.seed(42)
+1e3 -> N     # Shapiro test is limited to 5000
+rnorm(N, 0, 1) -> n1
+rnorm(N, 0, 4) -> n2
+n1 + n2 -> n3
+#shapiro.test(n3)   # Null is normality
+ks.test(n3, "pnorm", 0, sd(n3))  # Null is same distribution
+
+```
+
+
+```{r CS5.6}
+1:10 -> x
+0.5 * x * x + 1 -> y
+set.seed(42)
+rnorm(10, 0, 2) + y -> y
+
+# Figure 5.12
+plot(x, y,
+     pch = 16,
+     cex = 0.7,
+     main = "Fictitious Quadratic Data",
+     xlim = c(0, 11),
+     ylim = c(0, 50))
+lm(y ~ x) -> yquad.lm
+
+# Figure 5.13
+plot(x, yquad.lm$residuals,
+     main = "Residual Plot for Linear Fit",
+     ylab = "residual",
+     pch = 16,
+     cex = 0.7)
+
+```
+
+
+```{r CS5.7}
+1:10 -> x
+0.5 * x * x + 1 -> y
+set.seed(42)
+rnorm(10, 0, 2) + y -> y
+
+# Removable nonlinearity
+x * x -> x2
+lm(y ~ x2) -> yquad2_lm
+
+# Figure 5.14
+{
+plot(x, y,
+     pch = 16,
+     cex = 0.7,
+     main = "Fictitious Quadratic Data",
+     xlim = c(0, 11),
+     ylim = c(0, 50))
+lines(x, yquad2_lm$fitted.values,
+      col = "blue")
+lines(x, yquad.lm$fitted.values,
+      col = "darkgreen")
+}
+
+# Figure 5.15
+plot(x, yquad2_lm$residuals,
+     main = "Residual Plot for Quadratic Fit",
+     ylab = "residual",
+     pch = 16,
+     cex = 0.7)
+
+
+```
+
+
+CS 5.8
+```{r CS5.8}
+len <- 24
+x = runif(len)
+y = x^3 + runif(len, min = -0.1, max = 0.1)
+plot(x, y)
+s <- seq(from = 0, to = 1, length = 50)
+lines(s, s^3, lty = 2)
+
+df <- data.frame(x, y)
+# Original:
+# m <- nls(y ~ I(x^power), data = df, start = list(power = 1), trace = T)
+# Same result...is this an old vs. new R thing?
+m <- nls(y ~ x^power, data = df, start = list(power = 1), trace = T)
+
+
+lines(s, predict(m, list(x = s)), col = "green")
+
+
+
+(RSS.p <- sum(residuals(m)^2))  # Residual sum of squares
+
+## [1] 0.06888
+
+(TSS <- sum((y - mean(y))^2))  # Total sum of squares
+
+## [1] 2.09
+
+1 - (RSS.p/TSS)  # R-squared measure
+
+## [1] 0.967
+
+m.exp <- nls(y ~ I(a * exp(b * x)),
+             data = df, 
+             start = list(a = 1, b = 0.2), 
+             trace = T)
+
+# Figure 5.16
+plot(x, y)
+lines(s, s^3, lty = 2)
+lines(s, predict(m, list(x = s)), col = "green")
+lines(s, predict(m.exp, list(x = s)), col = "red")
+
+
+(RSS.p <- sum(residuals(m.exp)^2))  # Residual sum of squares
+
+## [1] 0.07707
+
+(TSS <- sum((y - mean(y))^2))  # Total sum of squares
+
+## [1] 2.09
+
+1 - (RSS.p/TSS)  # R-squared measure
+
+## [1] 0.9631
+
+
+
+
+
+
+```
+
+For two expoentials...will need to define functionals
+Figures 5.17a & 5.17b
+```{r CS5.9}
+exp.eq <- function(x, a, b) {
+    exp(1)^(a + b * sin(x^4))
+}
+
+exp.eq(2, 1, 3)  # testing the equation works: 3^2 + 1 = 10
+
+## [1] 1.146
+
+m.sinexp <- nls(y ~ exp.eq(x, a, b), data = df, start = list(a = 1, b = 1), 
+    trace = T)
+
+plot(x, y) 
+lines(s, s^3, lty = 2)
+lines(s, predict(m, list(x = s)), col = "green")
+lines(s, predict(m.exp, list(x = s)), col = "red")
+lines(s, predict(m.sinexp, list(x = s)), col = "blue")
+```
+
+CS Calculations
+```{r CS5.10}
+# AIC/BIC calculations for CS 5.8
+# AIC/BIC calculations for CS 5.9
+```
+
+
+Figures 5.18 and 5.19
+From Gelman et al., try with : 2 * Phi(arcsine((R-r)/x))/sigma)-1
+
+Phi is the cumulative normal distribution function. sigma is the std. dev. (and the variable to fit), as x is the distance (in feet), R is 4.25 inches, r is 1.68 inches
+
+pnorm(q, mu, sigma) is the CDF of the normal.
+
+```{r}
+fread("https://raw.githubusercontent.com/avehtari/ROS-Examples/master/Golf/data/golf.txt",
+      skip = 2,
+      header = TRUE) -> putts
+c("distance", "tries", "successes") -> colnames(putts)
+
+```
+
