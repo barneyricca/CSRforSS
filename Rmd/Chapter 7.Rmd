@@ -366,7 +366,7 @@ plot(walk1_df$ankleAngle[1:400], walk1_df$kneeAngle[1:400],
 
 
 ```{r F7.13}
-fread("http://citadel.sjfc.edu/faculty/bricca/SCIPIE2019/logistic.txt",
+fread("https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/logistic.txt",
   data.table = FALSE)$V1 -> logistic_series
 shift(logistic_series[1:30],
     1) -> xnp1   # "x n plus 1"
@@ -519,6 +519,9 @@ pops
 
 
 ```{r CS7.7}
+fread("https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/ts_sample.txt",
+  data.table = FALSE)$code -> data_series
+
 unique(data_series) -> code_names           # Get the code names
 length(data_series) -> n
 
@@ -530,18 +533,135 @@ matrix(0,
   adj_mat
 
 # Count the number of times one code is followed by another:
+data_series[-1] -> shift_series
 for(i in 1:(n-1)) {
-  adj_mat[data_series[i], data_series[i+1]] + 1 -> 
-    adj_mat[data_series[i], data_series[i+1]]
+  adj_mat[data_series[i], shift_series[i]] + 1 -> 
+    adj_mat[data_series[i], shift_series[i]]
 }
 adj_mat                                   # Look at the result
 
 # Make the matrix of transition probabilities (a.k.a., Markov matrix) from
 #  the matrix of transition frequencies:
 adj_mat/colSums(adj_mat) -> mark_mat
-mark_mat                                  # Look at the results
+round(mark_mat,2)                                  # Look at the results
 
 ```
+Equilibrium
+```{r CS7.8}
+eigenCodes <- eigen(t(mark_mat))
+equilibrium <- eigenCodes$vectors[,1] / sum(eigenCodes$vectors[,1])
+code_names -> names(equilibrium)
+equilibrium
+table(data_series) / length(data_series)
+```
+
+Bootstrap differences
+```{r CS7.9}
+fread("https://raw.githubusercontent.com/barneyricca/CSRforSS/master/Data/ts_sample.txt",
+  data.table = FALSE)$code -> data_series
+
+unique(data_series) -> code_names           # Get the code names
+
+as.integer(length(data_series)/2) -> divider
+data_series[1:divider] -> ds1
+ds1[-1] -> shift_1
+
+# Now, make a transition matrix. The next command saves time:
+matrix(0,
+       nrow = length(code_names),
+       ncol = length(code_names),
+       dimnames = list(code_names, code_names)) -> # Name the rows & columns
+  adj_mat
+
+# Count the number of times one code is followed by another:
+for(i in 1:(divider-1)) {
+  adj_mat[ds1[i], shift_1[i]] + 1 -> 
+    adj_mat[ds1[i], shift_1[i]]
+}
+# Convert to probabilities, by row.
+adj_mat/colSums(adj_mat) -> before_mat
+
+data_series[(divider+1):length(data_series)] -> ds2
+ds2[-1] -> shift_2
+matrix(0,
+       nrow = length(code_names),
+       ncol = length(code_names),
+       dimnames = list(code_names, code_names)) -> # Name the rows & columns
+  adj_mat
+
+#for(i in 1:(length(ds2)-1)) {
+for(i in 1:1043) {
+  adj_mat[ds2[i], shift_2[i]] + 1 -> 
+    adj_mat[ds2[i], shift_2[i]]
+}
+adj_mat/colSums(adj_mat) -> after_mat
+
+make_trans <- function(ts, code_names) {
+  # Make a transition matrix fom data series ts. code_names contains
+  #  all the possible codes, including those which do not appear in ts.
+  #  (This makes the bootstrap comparisons easier when that comes up.)
+  matrix(0,
+         nrow = length(code_names),
+         ncol = length(code_names),
+         dimnames = list(code_names, code_names)) -> # Name the rows & columns
+    adj_mat
+  ts[-1] -> tss
+  for(i in 1:(length(ts)-1)) {
+    adj_mat[ts[i], tss[i]] + 1 ->
+      adj_mat[ts[i], tss[i]]
+  }
+  return(adj_mat)
+}
+
+boot_trans <- function(mat1, mat2, probs, l1, R = 100, alpha = 0.05) {
+  # mat1 and mat2 must have matching row & column names
+  # mat1 and mat2 are Markov matrices
+  # mat1 will be bootstrapped and compared to mat2
+  # probs is the probability of each code appearing in the sub-sequence
+  # l1 is the length of the first sub-sequence.
+  # R is the number of replications
+  
+  vector(mode = "character", length = l1) -> boot_seq
+  # Start the sub-sequence
+  sample(colnames(mat1), 1, prob = probs) -> boot_seq[1]
+  runif(1043) -> ps
+  # Create the rest of the sub-seq
+  # The next does NOT work!
+  #  for(index in seq_along(2:l1)) {
+  for(index in 2:l1) {
+    sample(x = colnames(mat1),
+           size = 1,
+           prob = mat1[(boot_seq[index-1]),]) -> boot_seq[index]
+  }
+  
+  boot_seq[-1] -> boot_shift
+  
+  # Create the transition matrix and compare the distance
+  rep(0, R) -> boot_dist
+  for(replicat in 1:R) {
+    matrix(0, nrow = length(probs), 
+           ncol = length(probs),
+           dimnames = list(code_names, code_names)) -> boot_mat
+    for(index in 1:(l1-1)) {
+      boot_mat[boot_seq[index], boot_shift[index]] + 1 ->
+        boot_mat[boot_seq[index], boot_shift[index]]
+    }
+    boot_mat/colSums(boot_mat) -> boot_mat
+    sum((boot_mat-mat2)*(boot_mat-mat2)) -> boot_dist[replicat]
+  }
+  # Is there significance?
+  if(sum((mat1-mat2)*(mat1-mat2)) < quantile(boot_dist, 1-alpha)) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+boot_trans(before_mat, after_mat, 
+           unname(table(ds1))/sum(table(ds1)), 
+           divider)
+```
+
 
 ```{r CS7.10}
 # function trans_likely() for significance of transitions
